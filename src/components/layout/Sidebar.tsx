@@ -12,6 +12,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     { path: '/cari', label: 'Cari Hesaplar', icon: Icons.Cari },
     { path: '/kasa', label: 'Kasa & Banka', icon: Icons.Kasa },
     { path: '/gider', label: 'Giderler', icon: Icons.Gider },
+    { path: '/oto-galeri', label: 'Oto Galeri', icon: Icons.Car },
+    { path: '/stok', label: 'Stok Yönetimi', icon: Icons.Box },
+    { path: '/taksitler', label: 'Taksitler', icon: Icons.Calendar },
+    { path: '/kredi-kartlari', label: 'Kredi Kartları', icon: Icons.CreditCard },
     { path: '/ayarlar', label: 'Ayarlar', icon: Icons.Settings },
   ];
 

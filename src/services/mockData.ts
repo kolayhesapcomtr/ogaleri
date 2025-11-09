@@ -130,5 +130,20 @@ export const getMockData = (): AppState => {
     krediKartlari: [],
     krediKartiHareketler: [],
     islemKayitlari: [],
+    // Oto Galeri
+    araclar: [],
+    aracMaliyetler: [],
+    // Taksitli İşlemler
+    taksitliBorclar: [],
+    taksitliAlacaklar: [],
+    taksitOdemeleri: [],
+    // Stok
+    urunler: [],
+    stokHareketler: [],
+    // Çek & Senet
+    cekSenetler: [],
+    // Krediler
+    krediler: [],
+    krediOdemeleri: [],
   };
 };

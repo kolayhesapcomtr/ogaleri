@@ -5,6 +5,10 @@ import { Dashboard } from './components/pages/Dashboard';
 import { CariPage } from './components/pages/CariPage';
 import { KasaPage } from './components/pages/KasaPage';
 import { GiderPage } from './components/pages/GiderPage';
+import { OtoGaleriPage } from './components/pages/OtoGaleriPage';
+import { StokPage } from './components/pages/StokPage';
+import { TaksitPage } from './components/pages/TaksitPage';
+import { KrediKartiPage } from './components/pages/KrediKartiPage';
 import { AyarlarPage } from './components/pages/AyarlarPage';
 import type { AppState, AppMode } from './types';
 import { getMockData } from './services/mockData';
@@ -43,6 +47,22 @@ function App() {
           <Route
             path="/gider"
             element={<GiderPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
+            path="/oto-galeri"
+            element={<OtoGaleriPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
+            path="/stok"
+            element={<StokPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
+            path="/taksitler"
+            element={<TaksitPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
+            path="/kredi-kartlari"
+            element={<KrediKartiPage appState={appState} setAppState={setAppState} />}
           />
           <Route path="/ayarlar" element={<AyarlarPage />} />
         </Route>
