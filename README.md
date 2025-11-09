@@ -2,6 +2,10 @@
 
 Küçük ve orta ölçekli işletmelerin finansal operasyonlarını takip etmesi için geliştirilmiş modüler bir web uygulaması.
 
+## 🌐 Demo
+
+**Canlı Demo:** [https://kolayhesapcomtr.github.io/ogaleri/](https://kolayhesapcomtr.github.io/ogaleri/)
+
 ## Özellikler
 
 - 📊 **Dashboard** - Genel bakış ve istatistikler
