@@ -26,7 +26,7 @@ function App() {
   };
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/ogaleri">
       <Routes>
         <Route
           element={<Layout mode={mode} onModeChange={handleModeChange} />}
