@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Gider, OdemeYontemi, AppState } from '../../types';
+import type { OdemeYontemi, AppState } from '../../types';
 import { useAppService } from '../../hooks/useAppService';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';

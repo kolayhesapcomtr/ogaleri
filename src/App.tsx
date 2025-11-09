@@ -6,7 +6,7 @@ import { CariPage } from './components/pages/CariPage';
 import { KasaPage } from './components/pages/KasaPage';
 import { GiderPage } from './components/pages/GiderPage';
 import { AyarlarPage } from './components/pages/AyarlarPage';
-import { AppState, AppMode } from './types';
+import type { AppState, AppMode } from './types';
 import { getMockData } from './services/mockData';
 
 function App() {

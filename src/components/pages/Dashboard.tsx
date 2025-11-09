@@ -1,4 +1,4 @@
-import { AppState } from '../../types';
+import type { AppState } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { Icons } from '../../constants/icons';
 

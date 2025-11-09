@@ -1,12 +1,11 @@
 import { useCallback } from 'react';
-import {
+import type {
   AppState,
   Cari,
   CariHareket,
   Hesap,
   HesapHareket,
   Gider,
-  IslemKaydi,
 } from '../types';
 import { generateId, getTodayDate } from '../utils/formatters';
 

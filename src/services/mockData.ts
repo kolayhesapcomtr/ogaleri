@@ -1,4 +1,4 @@
-import { AppState } from '../types';
+import type { AppState } from '../types';
 import { DEFAULT_AYARLAR } from '../constants';
 import { generateId, getTodayDate } from '../utils/formatters';
 
