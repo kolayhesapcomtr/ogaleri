@@ -14,12 +14,14 @@ interface GiderPageProps {
 }
 
 export const GiderPage = ({ appState, setAppState }: GiderPageProps) => {
-  const { addGider, deleteGider } = useAppService({
+  const { addGider, updateGider, deleteGider } = useAppService({
     appState,
     setAppState,
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingGiderId, setEditingGiderId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     tarih: getTodayDate(),
     kategori: '',
@@ -27,6 +29,10 @@ export const GiderPage = ({ appState, setAppState }: GiderPageProps) => {
     odemeYontemi: 'Nakit' as OdemeYontemi,
     hesapId: '',
     krediKartiId: '',
+    aciklama: '',
+  });
+  const [editForm, setEditForm] = useState({
+    kategori: '',
     aciklama: '',
   });
 
@@ -73,6 +79,31 @@ export const GiderPage = ({ appState, setAppState }: GiderPageProps) => {
   const handleDelete = (id: string) => {
     if (window.confirm('Bu gideri silmek istediğinizden emin misiniz?')) {
       deleteGider(id);
+    }
+  };
+
+  const handleOpenEditModal = (giderId: string) => {
+    const gider = appState.giderler.find((g) => g.id === giderId);
+    if (gider) {
+      setEditingGiderId(giderId);
+      setEditForm({
+        kategori: gider.kategori,
+        aciklama: gider.aciklama || '',
+      });
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingGiderId(null);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingGiderId) {
+      updateGider(editingGiderId, editForm);
+      handleCloseEditModal();
     }
   };
 
@@ -188,12 +219,22 @@ export const GiderPage = ({ appState, setAppState }: GiderPageProps) => {
                     {gider.aciklama || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleDelete(gider.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Icons.Delete />
-                    </button>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => handleOpenEditModal(gider.id)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="Düzenle"
+                      >
+                        <Icons.Edit />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(gider.id)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Sil"
+                      >
+                        <Icons.Delete />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -220,12 +261,22 @@ export const GiderPage = ({ appState, setAppState }: GiderPageProps) => {
                     {formatDate(gider.tarih)}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(gider.id)}
-                  className="text-red-600 hover:text-red-900"
-                >
-                  <Icons.Delete />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleOpenEditModal(gider.id)}
+                    className="text-blue-600 hover:text-blue-900"
+                    title="Düzenle"
+                  >
+                    <Icons.Edit />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(gider.id)}
+                    className="text-red-600 hover:text-red-900"
+                    title="Sil"
+                  >
+                    <Icons.Delete />
+                  </button>
+                </div>
               </div>
 
               <div className="text-lg font-semibold text-red-600 mb-2">
@@ -362,6 +413,63 @@ export const GiderPage = ({ appState, setAppState }: GiderPageProps) => {
               type="button"
               variant="secondary"
               onClick={handleCloseModal}
+              className="flex-1"
+            >
+              İptal
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Düzenleme Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        title="Gider Düzenle"
+      >
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          <Select
+            label="Kategori *"
+            value={editForm.kategori}
+            onChange={(e) =>
+              setEditForm({ ...editForm, kategori: e.target.value })
+            }
+            options={appState.ayarlar.giderKategorileri.map((k) => ({
+              value: k,
+              label: k,
+            }))}
+            required
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Açıklama
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              rows={3}
+              value={editForm.aciklama}
+              onChange={(e) =>
+                setEditForm({ ...editForm, aciklama: e.target.value })
+              }
+              placeholder="Gider açıklaması..."
+            />
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="text-sm text-yellow-800">
+              <strong>Not:</strong> Tutar ve ödeme yöntemi değiştirilemez (hesap hareketleri oluşturulmuş).
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1">
+              Güncelle
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseEditModal}
               className="flex-1"
             >
               İptal

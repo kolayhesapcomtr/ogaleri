@@ -495,6 +495,28 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [appState.giderler, setAppState]
   );
 
+  const updateGider = useCallback(
+    (id: string, updates: Partial<Pick<Gider, 'kategori' | 'aciklama'>>) => {
+      setAppState((prev) => ({
+        ...prev,
+        giderler: prev.giderler.map((g) =>
+          g.id === id ? { ...g, ...updates } : g
+        ),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'Gider',
+            tip: 'GÜNCELLEME',
+            aciklama: `Gider güncellendi`,
+          },
+        ],
+      }));
+    },
+    [setAppState]
+  );
+
   // ==================== OTO GALERİ ====================
 
   const addAracPesin = useCallback(
@@ -2241,6 +2263,7 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
 
     // Gider
     addGider,
+    updateGider,
     deleteGider,
 
     // Oto Galeri
