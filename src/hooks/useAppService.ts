@@ -770,6 +770,181 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [setAppState]
   );
 
+  const sellArac = useCallback(
+    (sellData: {
+      aracId: string;
+      satisFiyati: number;
+      satisTarihi: string;
+      musteriCariId: string;
+      odemeYontemi: 'Nakit' | 'Banka' | 'Kredi Kartı';
+      hesapId?: string;
+      krediKartiId?: string;
+      aciklama?: string;
+    }) => {
+      const arac = appState.araclar.find((a) => a.id === sellData.aracId);
+      if (!arac) {
+        throw new Error('Araç bulunamadı');
+      }
+
+      const karZarar = sellData.satisFiyati - arac.toplamMaliyet;
+
+      setAppState((prev) => {
+        let updatedHesaplar = prev.hesaplar;
+        let updatedHesapHareketler = prev.hesapHareketler;
+        let updatedCariler = prev.cariler;
+        let updatedCariHareketler = prev.cariHareketler;
+        let updatedKrediKartlari = prev.krediKartlari;
+        let updatedKrediKartiHareketler = prev.krediKartiHareketler;
+
+        // Cari hareketi oluştur (Müşteri için Alacak)
+        const cariHareket: CariHareket = {
+          id: generateId(),
+          cariId: sellData.musteriCariId,
+          tarih: sellData.satisTarihi,
+          tip: 'Alacak',
+          tutar: sellData.satisFiyati,
+          aciklama: `Araç satışı: ${arac.marka} ${arac.model} (${arac.plaka})`,
+          kaynakModul: 'OtoGaleri',
+          kaynakId: arac.id,
+          kilitli: true,
+        };
+
+        updatedCariHareketler = [...prev.cariHareketler, cariHareket];
+        updatedCariler = prev.cariler.map((c) =>
+          c.id === sellData.musteriCariId
+            ? { ...c, bakiye: c.bakiye - sellData.satisFiyati }
+            : c
+        );
+
+        // Ödeme yöntemine göre işlem yap
+        if (
+          sellData.odemeYontemi === 'Nakit' ||
+          sellData.odemeYontemi === 'Banka'
+        ) {
+          if (sellData.hesapId) {
+            // Cari tahsilat hareketi
+            const tahsilatCariHareket: CariHareket = {
+              id: generateId(),
+              cariId: sellData.musteriCariId,
+              tarih: sellData.satisTarihi,
+              tip: 'Tahsilat',
+              tutar: sellData.satisFiyati,
+              aciklama: `Araç satış ödemesi: ${arac.marka} ${arac.model}`,
+              kaynakModul: 'OtoGaleri',
+              kaynakId: arac.id,
+              kilitli: true,
+            };
+
+            updatedCariHareketler = [...updatedCariHareketler, tahsilatCariHareket];
+            updatedCariler = updatedCariler.map((c) =>
+              c.id === sellData.musteriCariId
+                ? { ...c, bakiye: c.bakiye + sellData.satisFiyati }
+                : c
+            );
+
+            // Hesap hareketi (Para girişi)
+            const hesapHareket: HesapHareket = {
+              id: generateId(),
+              hesapId: sellData.hesapId,
+              tarih: sellData.satisTarihi,
+              tip: 'ParaGirişi',
+              tutar: sellData.satisFiyati,
+              aciklama: `Araç satışı: ${arac.marka} ${arac.model} (${arac.plaka})`,
+              kaynakModul: 'OtoGaleri',
+              kaynakId: arac.id,
+              kilitli: true,
+            };
+
+            updatedHesapHareketler = [...prev.hesapHareketler, hesapHareket];
+            updatedHesaplar = prev.hesaplar.map((h) =>
+              h.id === sellData.hesapId
+                ? { ...h, bakiye: h.bakiye + sellData.satisFiyati }
+                : h
+            );
+          }
+        } else if (sellData.krediKartiId) {
+          // Kredi kartı ile satış (ters işlem - alacak azaltır)
+          const tahsilatCariHareket: CariHareket = {
+            id: generateId(),
+            cariId: sellData.musteriCariId,
+            tarih: sellData.satisTarihi,
+            tip: 'Tahsilat',
+            tutar: sellData.satisFiyati,
+            aciklama: `Araç satış ödemesi (KK): ${arac.marka} ${arac.model}`,
+            kaynakModul: 'OtoGaleri',
+            kaynakId: arac.id,
+            kilitli: true,
+          };
+
+          updatedCariHareketler = [...updatedCariHareketler, tahsilatCariHareket];
+          updatedCariler = updatedCariler.map((c) =>
+            c.id === sellData.musteriCariId
+              ? { ...c, bakiye: c.bakiye + sellData.satisFiyati }
+              : c
+          );
+
+          // Kredi kartı ödemesi (borç azaltır)
+          updatedKrediKartlari = prev.krediKartlari.map((kart) =>
+            kart.id === sellData.krediKartiId
+              ? { ...kart, bakiye: kart.bakiye - sellData.satisFiyati }
+              : kart
+          );
+
+          updatedKrediKartiHareketler = [
+            ...prev.krediKartiHareketler,
+            {
+              id: generateId(),
+              krediKartiId: sellData.krediKartiId,
+              tarih: sellData.satisTarihi,
+              tip: 'Ödeme',
+              tutar: sellData.satisFiyati,
+              aciklama: `Araç satış tahsilatı: ${arac.marka} ${arac.model}`,
+              kaynakModul: 'OtoGaleri',
+              kaynakId: arac.id,
+            },
+          ];
+        }
+
+        // Aracı güncelle
+        const updatedAraclar = prev.araclar.map((a) =>
+          a.id === sellData.aracId
+            ? {
+                ...a,
+                satisFiyati: sellData.satisFiyati,
+                satisTarihi: sellData.satisTarihi,
+                musteriCariId: sellData.musteriCariId,
+                karZarar,
+              }
+            : a
+        );
+
+        return {
+          ...prev,
+          araclar: updatedAraclar,
+          cariler: updatedCariler,
+          cariHareketler: updatedCariHareketler,
+          hesaplar: updatedHesaplar,
+          hesapHareketler: updatedHesapHareketler,
+          krediKartlari: updatedKrediKartlari,
+          krediKartiHareketler: updatedKrediKartiHareketler,
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'OtoGaleri',
+              tip: 'GÜNCELLEME',
+              aciklama: `Araç satıldı: ${arac.marka} ${arac.model} (${arac.plaka}) - Kar/Zarar: ${formatCurrency(karZarar)}`,
+            },
+          ],
+        };
+      });
+
+      return arac;
+    },
+    [appState.araclar, setAppState]
+  );
+
   // ==================== STOK YÖNETİMİ ====================
 
   const addUrun = useCallback(
@@ -1986,6 +2161,7 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     addAracPesin,
     addAracTaksitli,
     addAracMaliyet,
+    sellArac,
 
     // Stok
     addUrun,

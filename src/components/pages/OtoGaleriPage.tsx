@@ -18,7 +18,7 @@ type ModalType = 'none' | 'pesin' | 'taksitli' | 'maliyet' | 'satis';
 
 export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => {
   const navigate = useNavigate();
-  const { addAracPesin, addAracTaksitli, addAracMaliyet } = useAppService({
+  const { addAracPesin, addAracTaksitli, addAracMaliyet, sellArac } = useAppService({
     appState,
     setAppState,
   });
@@ -68,6 +68,17 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
     krediKartiId: '',
     aciklama: '',
     tarih: new Date().toISOString().split('T')[0],
+  });
+
+  // Satış Form
+  const [satisForm, setSatisForm] = useState({
+    satisFiyati: 0,
+    satisTarihi: new Date().toISOString().split('T')[0],
+    musteriCariId: '',
+    odemeYontemi: 'Nakit' as OdemeYontemi,
+    hesapId: '',
+    krediKartiId: '',
+    aciklama: '',
   });
 
   const handleOpenModal = (type: ModalType, arac?: Arac) => {
@@ -144,12 +155,29 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
     }
   };
 
+  const handleSatisSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedArac) {
+      if (!satisForm.musteriCariId || satisForm.satisFiyati <= 0) {
+        alert('Lütfen tüm zorunlu alanları doldurun');
+        return;
+      }
+
+      sellArac({
+        aracId: selectedArac.id,
+        ...satisForm,
+      });
+      handleCloseModal();
+    }
+  };
+
   const getKar = (arac: Arac) => {
     if (arac.durum === 'Stokta' || !arac.satisFiyati) return 0;
     return arac.satisFiyati - arac.toplamMaliyet;
   };
 
   const tedarikciList = appState.cariler.filter((c) => c.tip === 'Tedarikçi');
+  const musteriList = appState.cariler.filter((c) => c.tip === 'Müşteri');
   const hesapList = appState.hesaplar;
   const krediKartiList = appState.krediKartlari;
 
@@ -268,13 +296,22 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {arac.durum === 'Stokta' && (
-                        <button
-                          onClick={() => handleOpenModal('maliyet', arac)}
-                          className="text-primary hover:text-primary-dark"
-                          title="Maliyet Ekle"
-                        >
-                          <Icons.Add />
-                        </button>
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => handleOpenModal('maliyet', arac)}
+                            className="text-primary hover:text-primary-dark"
+                            title="Maliyet Ekle"
+                          >
+                            <Icons.Add />
+                          </button>
+                          <button
+                            onClick={() => handleOpenModal('satis', arac)}
+                            className="text-green-600 hover:text-green-700"
+                            title="Satış Yap"
+                          >
+                            💰
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -358,13 +395,19 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
                 </div>
 
                 {arac.durum === 'Stokta' && (
-                  <div className="mt-4 pt-3 border-t">
+                  <div className="mt-4 pt-3 border-t flex gap-2">
                     <Button
                       onClick={() => handleOpenModal('maliyet', arac)}
-                      className="w-full"
+                      className="flex-1"
                       variant="secondary"
                     >
                       Maliyet Ekle
+                    </Button>
+                    <Button
+                      onClick={() => handleOpenModal('satis', arac)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      Satış Yap
                     </Button>
                   </div>
                 )}
@@ -874,6 +917,170 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="flex-1">
               Ekle
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseModal}
+              className="flex-1"
+            >
+              İptal
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Satış Modal */}
+      <Modal
+        isOpen={modalType === 'satis'}
+        onClose={handleCloseModal}
+        title={`Araç Satışı - ${selectedArac?.marka} ${selectedArac?.model}`}
+      >
+        <form onSubmit={handleSatisSubmit} className="space-y-4">
+          {selectedArac && (
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <p className="text-sm text-gray-600">Toplam Maliyet</p>
+              <p className="text-lg font-bold text-gray-900">
+                {formatCurrency(selectedArac.toplamMaliyet)}
+              </p>
+            </div>
+          )}
+
+          <Input
+            label="Satış Fiyatı *"
+            type="number"
+            step="0.01"
+            value={satisForm.satisFiyati}
+            onChange={(e) =>
+              setSatisForm({
+                ...satisForm,
+                satisFiyati: parseFloat(e.target.value) || 0,
+              })
+            }
+            required
+          />
+
+          {selectedArac && satisForm.satisFiyati > 0 && (
+            <div className="bg-blue-50 p-3 rounded">
+              <p className="text-sm font-medium">
+                Kar/Zarar:{' '}
+                <span
+                  className={
+                    satisForm.satisFiyati - selectedArac.toplamMaliyet >= 0
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }
+                >
+                  {formatCurrency(
+                    satisForm.satisFiyati - selectedArac.toplamMaliyet
+                  )}
+                </span>
+              </p>
+            </div>
+          )}
+
+          <Input
+            label="Satış Tarihi *"
+            type="date"
+            value={satisForm.satisTarihi}
+            onChange={(e) =>
+              setSatisForm({ ...satisForm, satisTarihi: e.target.value })
+            }
+            required
+          />
+
+          <Select
+            label="Müşteri (Alıcı) *"
+            value={satisForm.musteriCariId}
+            onChange={(e) =>
+              setSatisForm({ ...satisForm, musteriCariId: e.target.value })
+            }
+            options={[
+              { value: '', label: 'Müşteri Seçiniz...' },
+              ...musteriList.map((m) => ({
+                value: m.id,
+                label: m.ad,
+              })),
+            ]}
+            required
+          />
+
+          <Select
+            label="Ödeme Yöntemi *"
+            value={satisForm.odemeYontemi}
+            onChange={(e) =>
+              setSatisForm({
+                ...satisForm,
+                odemeYontemi: e.target.value as OdemeYontemi,
+                hesapId: '',
+                krediKartiId: '',
+              })
+            }
+            options={[
+              { value: 'Nakit', label: 'Nakit' },
+              { value: 'Banka', label: 'Banka' },
+              { value: 'Kredi Kartı', label: 'Kredi Kartı' },
+            ]}
+            required
+          />
+
+          {(satisForm.odemeYontemi === 'Nakit' ||
+            satisForm.odemeYontemi === 'Banka') && (
+            <Select
+              label="Hesap *"
+              value={satisForm.hesapId}
+              onChange={(e) =>
+                setSatisForm({ ...satisForm, hesapId: e.target.value })
+              }
+              options={[
+                { value: '', label: 'Hesap Seçiniz...' },
+                ...hesapList.map((h) => ({
+                  value: h.id,
+                  label: `${h.ad} (${formatCurrency(h.bakiye)})`,
+                })),
+              ]}
+              required
+            />
+          )}
+
+          {satisForm.odemeYontemi === 'Kredi Kartı' && (
+            <Select
+              label="Kredi Kartı *"
+              value={satisForm.krediKartiId}
+              onChange={(e) =>
+                setSatisForm({
+                  ...satisForm,
+                  krediKartiId: e.target.value,
+                })
+              }
+              options={[
+                { value: '', label: 'Kredi Kartı Seçiniz...' },
+                ...krediKartiList.map((k) => ({
+                  value: k.id,
+                  label: `${k.ad} (Kullanılabilir: ${formatCurrency(k.limit - k.bakiye)})`,
+                })),
+              ]}
+              required
+            />
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Açıklama
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              rows={3}
+              value={satisForm.aciklama}
+              onChange={(e) =>
+                setSatisForm({ ...satisForm, aciklama: e.target.value })
+              }
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1">
+              Satışı Tamamla
             </Button>
             <Button
               type="button"
