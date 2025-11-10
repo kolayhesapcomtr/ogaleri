@@ -746,13 +746,15 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
               )}
 
               <Input
-                label="Taksit Sayısı *"
+                label="Taksit Sayısı (Ay) *"
                 type="number"
+                min="1"
+                max="120"
                 value={taksitliForm.taksitSayisi}
                 onChange={(e) =>
                   setTaksitliForm({
                     ...taksitliForm,
-                    taksitSayisi: parseInt(e.target.value),
+                    taksitSayisi: parseInt(e.target.value) || 1,
                   })
                 }
                 required
@@ -1229,24 +1231,18 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
             required
           />
 
-          <Select
-            label="Taksit Sayısı *"
-            value={satisTaksitliForm.taksitSayisi.toString()}
+          <Input
+            label="Taksit Sayısı (Ay) *"
+            type="number"
+            min="1"
+            max="120"
+            value={satisTaksitliForm.taksitSayisi}
             onChange={(e) =>
               setSatisTaksitliForm({
                 ...satisTaksitliForm,
-                taksitSayisi: parseInt(e.target.value),
+                taksitSayisi: parseInt(e.target.value) || 1,
               })
             }
-            options={[
-              { value: '3', label: '3 Taksit' },
-              { value: '6', label: '6 Taksit' },
-              { value: '9', label: '9 Taksit' },
-              { value: '12', label: '12 Taksit' },
-              { value: '18', label: '18 Taksit' },
-              { value: '24', label: '24 Taksit' },
-              { value: '36', label: '36 Taksit' },
-            ]}
             required
           />
 

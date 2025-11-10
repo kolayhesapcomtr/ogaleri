@@ -1042,24 +1042,18 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
             required
           />
 
-          <Select
-            label="Taksit Sayısı *"
+          <Input
+            label="Taksit Sayısı (Ay) *"
+            type="number"
+            min="1"
+            max="120"
             value={girisTaksitliForm.taksitSayisi}
             onChange={(e) =>
               setGirisTaksitliForm({
                 ...girisTaksitliForm,
-                taksitSayisi: parseInt(e.target.value),
+                taksitSayisi: parseInt(e.target.value) || 1,
               })
             }
-            options={[
-              { value: '3', label: '3 Ay' },
-              { value: '6', label: '6 Ay' },
-              { value: '9', label: '9 Ay' },
-              { value: '12', label: '12 Ay' },
-              { value: '18', label: '18 Ay' },
-              { value: '24', label: '24 Ay' },
-              { value: '36', label: '36 Ay' },
-            ]}
             required
           />
 
@@ -1221,24 +1215,18 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
             required
           />
 
-          <Select
-            label="Taksit Sayısı *"
+          <Input
+            label="Taksit Sayısı (Ay) *"
+            type="number"
+            min="1"
+            max="120"
             value={cikisTaksitliForm.taksitSayisi}
             onChange={(e) =>
               setCikisTaksitliForm({
                 ...cikisTaksitliForm,
-                taksitSayisi: parseInt(e.target.value),
+                taksitSayisi: parseInt(e.target.value) || 1,
               })
             }
-            options={[
-              { value: '3', label: '3 Ay' },
-              { value: '6', label: '6 Ay' },
-              { value: '9', label: '9 Ay' },
-              { value: '12', label: '12 Ay' },
-              { value: '18', label: '18 Ay' },
-              { value: '24', label: '24 Ay' },
-              { value: '36', label: '36 Ay' },
-            ]}
             required
           />
 
