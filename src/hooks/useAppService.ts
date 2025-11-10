@@ -1556,6 +1556,116 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [setAppState]
   );
 
+  const updateKredi = useCallback(
+    (id: string, updates: Partial<Pick<Kredi, 'ad' | 'banka' | 'faizOrani' | 'aciklama'>>) => {
+      setAppState((prev) => ({
+        ...prev,
+        krediler: prev.krediler.map((k) =>
+          k.id === id ? { ...k, ...updates } : k
+        ),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'Krediler',
+            tip: 'GÜNCELLEME',
+            aciklama: `Kredi güncellendi`,
+          },
+        ],
+      }));
+    },
+    [setAppState]
+  );
+
+  const deleteKredi = useCallback(
+    (id: string) => {
+      const kredi = appState.krediler.find((k) => k.id === id);
+      if (!kredi) return;
+
+      // Kalan borç varsa uyarı
+      if (kredi.kalanTutar > 0) {
+        if (!confirm(`Bu kredinin ${formatCurrency(kredi.kalanTutar)} kalan borcu var. Silmek istediğinizden emin misiniz?`)) {
+          return;
+        }
+      }
+
+      setAppState((prev) => ({
+        ...prev,
+        krediler: prev.krediler.filter((k) => k.id !== id),
+        krediOdemeleri: prev.krediOdemeleri.filter((o) => o.krediId !== id),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'Krediler',
+            tip: 'SİLME',
+            aciklama: `Kredi silindi: ${kredi.ad}`,
+          },
+        ],
+      }));
+    },
+    [appState.krediler, setAppState]
+  );
+
+  const payKrediSimple = useCallback(
+    (krediId: string, tutar: number, hesapId: string, tarih: string) => {
+      const kredi = appState.krediler.find((k) => k.id === krediId);
+      if (!kredi) {
+        throw new Error('Kredi bulunamadı');
+      }
+
+      if (tutar > kredi.kalanTutar) {
+        throw new Error('Ödeme tutarı kalan borçtan fazla olamaz');
+      }
+
+      setAppState((prev) => {
+        let newState = { ...prev };
+
+        // Kalan tutarı güncelle
+        newState.krediler = prev.krediler.map((k) =>
+          k.id === krediId
+            ? { ...k, kalanTutar: k.kalanTutar - tutar }
+            : k
+        );
+
+        // Hesap hareketi
+        const hesapHareket: HesapHareket = {
+          id: generateId(),
+          hesapId,
+          tarih,
+          tip: 'ParaÇıkışı',
+          tutar,
+          aciklama: `Kredi ödemesi: ${kredi.ad}`,
+          kaynakModul: 'Krediler',
+          kaynakId: krediId,
+          kilitli: false,
+        };
+
+        newState.hesapHareketler = [...prev.hesapHareketler, hesapHareket];
+        newState.hesaplar = prev.hesaplar.map((h) =>
+          h.id === hesapId ? { ...h, bakiye: h.bakiye - tutar } : h
+        );
+
+        return {
+          ...newState,
+          islemKayitlari: [
+            ...newState.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Krediler',
+              tip: 'OLUŞTURMA',
+              aciklama: `Kredi ödemesi yapıldı: ${kredi.ad} - ${formatCurrency(tutar)}`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.krediler, setAppState]
+  );
+
   const payKrediTaksit = useCallback(
     (taksitId: string, odemeTarihi: string, hesapId: string) => {
       const taksit = appState.krediOdemeleri.find((t) => t.id === taksitId);
@@ -1896,6 +2006,9 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
 
     // Krediler
     addKredi,
+    updateKredi,
+    deleteKredi,
+    payKrediSimple,
     payKrediTaksit,
 
     // Çek & Senet

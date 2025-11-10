@@ -14,6 +14,8 @@ import { UrunDetailPage } from './components/pages/UrunDetailPage';
 import { TaksitPage } from './components/pages/TaksitPage';
 import { KrediKartiPage } from './components/pages/KrediKartiPage';
 import { KrediKartiDetailPage } from './components/pages/KrediKartiDetailPage';
+import { KrediPage } from './components/pages/KrediPage';
+import { KrediDetailPage } from './components/pages/KrediDetailPage';
 import { CekSenetPage } from './components/pages/CekSenetPage';
 import { CekSenetDetailPage } from './components/pages/CekSenetDetailPage';
 import { IslemKayitlariPage } from './components/pages/IslemKayitlariPage';
@@ -91,6 +93,14 @@ function App() {
           <Route
             path="/kredi-kartlari/:id"
             element={<KrediKartiDetailPage appState={appState} />}
+          />
+          <Route
+            path="/krediler"
+            element={<KrediPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
+            path="/krediler/:id"
+            element={<KrediDetailPage appState={appState} />}
           />
           <Route
             path="/cek-senet"

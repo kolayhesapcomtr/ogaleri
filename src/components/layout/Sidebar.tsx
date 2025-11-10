@@ -16,6 +16,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     { path: '/stok', label: 'Stok Yönetimi', icon: Icons.Box },
     { path: '/taksitler', label: 'Taksitler', icon: Icons.Calendar },
     { path: '/kredi-kartlari', label: 'Kredi Kartları', icon: Icons.CreditCard },
+    { path: '/krediler', label: 'Krediler', icon: Icons.CreditCard },
     { path: '/cek-senet', label: 'Çek & Senet', icon: Icons.Document },
     { path: '/islem-kayitlari', label: 'İşlem Kayıtları', icon: Icons.Document },
     { path: '/ayarlar', label: 'Ayarlar', icon: Icons.Settings },

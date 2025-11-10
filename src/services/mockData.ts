@@ -182,7 +182,22 @@ export const getMockData = (): AppState => {
       },
     ],
     // Krediler
-    krediler: [],
+    krediler: [
+      {
+        id: generateId(),
+        ad: 'İşletme Kredisi',
+        banka: 'Ziraat Bankası',
+        toplamTutar: 100000,
+        kalanTutar: 80000,
+        faizOrani: 2.5,
+        taksitSayisi: 12,
+        aylikTaksit: 8333.33,
+        baslangicTarihi: '2024-12-01',
+        bitisTarihi: '2025-12-01',
+        aciklama: 'İşletme sermayesi için kullanıldı',
+        olusturmaTarihi: today,
+      },
+    ],
     krediOdemeleri: [],
   };
 };
