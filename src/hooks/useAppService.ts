@@ -3232,6 +3232,242 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [appState.cekSenetler, setAppState]
   );
 
+  // ==================== AYARLAR ====================
+
+  const addKategori = useCallback(
+    (tip: 'gider' | 'gelir' | 'urun', kategori: string) => {
+      setAppState((prev) => {
+        const field =
+          tip === 'gider'
+            ? 'giderKategorileri'
+            : tip === 'gelir'
+            ? 'gelirKategorileri'
+            : 'urunKategorileri';
+
+        // Kategori zaten varsa ekleme
+        if (prev.ayarlar[field].includes(kategori)) {
+          throw new Error('Bu kategori zaten mevcut');
+        }
+
+        return {
+          ...prev,
+          ayarlar: {
+            ...prev.ayarlar,
+            [field]: [...prev.ayarlar[field], kategori],
+          },
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Ayarlar',
+              tip: 'OLUŞTURMA',
+              aciklama: `${tip.charAt(0).toUpperCase() + tip.slice(1)} kategorisi eklendi: ${kategori}`,
+            },
+          ],
+        };
+      });
+    },
+    [setAppState]
+  );
+
+  const updateKategori = useCallback(
+    (tip: 'gider' | 'gelir' | 'urun', eskiKategori: string, yeniKategori: string) => {
+      setAppState((prev) => {
+        const field =
+          tip === 'gider'
+            ? 'giderKategorileri'
+            : tip === 'gelir'
+            ? 'gelirKategorileri'
+            : 'urunKategorileri';
+
+        // Eski kategori yoksa hata
+        if (!prev.ayarlar[field].includes(eskiKategori)) {
+          throw new Error('Güncellenecek kategori bulunamadı');
+        }
+
+        // Yeni kategori zaten varsa hata
+        if (
+          prev.ayarlar[field].includes(yeniKategori) &&
+          eskiKategori !== yeniKategori
+        ) {
+          throw new Error('Bu kategori adı zaten kullanılıyor');
+        }
+
+        // Kategorileri güncelle
+        const updatedKategoriler = prev.ayarlar[field].map((k) =>
+          k === eskiKategori ? yeniKategori : k
+        );
+
+        // İlgili kayıtları da güncelle
+        let updatedGiderler = prev.giderler;
+        let updatedUrunler = prev.urunler;
+
+        if (tip === 'gider') {
+          updatedGiderler = prev.giderler.map((g) =>
+            g.kategori === eskiKategori ? { ...g, kategori: yeniKategori } : g
+          );
+        } else if (tip === 'urun') {
+          updatedUrunler = prev.urunler.map((u) =>
+            u.kategori === eskiKategori ? { ...u, kategori: yeniKategori } : u
+          );
+        }
+
+        return {
+          ...prev,
+          ayarlar: {
+            ...prev.ayarlar,
+            [field]: updatedKategoriler,
+          },
+          giderler: updatedGiderler,
+          urunler: updatedUrunler,
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Ayarlar',
+              tip: 'GÜNCELLEME',
+              aciklama: `Kategori güncellendi: ${eskiKategori} → ${yeniKategori}`,
+            },
+          ],
+        };
+      });
+    },
+    [setAppState]
+  );
+
+  const deleteKategori = useCallback(
+    (tip: 'gider' | 'gelir' | 'urun', kategori: string) => {
+      const field =
+        tip === 'gider'
+          ? 'giderKategorileri'
+          : tip === 'gelir'
+          ? 'gelirKategorileri'
+          : 'urunKategorileri';
+
+      // Kategorinin kullanımda olup olmadığını kontrol et
+      if (tip === 'gider') {
+        const kullanimda = appState.giderler.some((g) => g.kategori === kategori);
+        if (kullanimda) {
+          throw new Error('Bu kategori kullanımda olduğu için silinemez');
+        }
+      } else if (tip === 'urun') {
+        const kullanimda = appState.urunler.some((u) => u.kategori === kategori);
+        if (kullanimda) {
+          throw new Error('Bu kategori kullanımda olduğu için silinemez');
+        }
+      }
+
+      setAppState((prev) => ({
+        ...prev,
+        ayarlar: {
+          ...prev.ayarlar,
+          [field]: prev.ayarlar[field].filter((k) => k !== kategori),
+        },
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'Ayarlar',
+            tip: 'SİLME',
+            aciklama: `${tip.charAt(0).toUpperCase() + tip.slice(1)} kategorisi silindi: ${kategori}`,
+          },
+        ],
+      }));
+    },
+    [appState.giderler, appState.urunler, setAppState]
+  );
+
+  const addSube = useCallback(
+    (sube: string) => {
+      setAppState((prev) => {
+        // Şube zaten varsa ekleme
+        if (prev.ayarlar.subeler.includes(sube)) {
+          throw new Error('Bu şube zaten mevcut');
+        }
+
+        return {
+          ...prev,
+          ayarlar: {
+            ...prev.ayarlar,
+            subeler: [...prev.ayarlar.subeler, sube],
+          },
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Ayarlar',
+              tip: 'OLUŞTURMA',
+              aciklama: `Şube eklendi: ${sube}`,
+            },
+          ],
+        };
+      });
+    },
+    [setAppState]
+  );
+
+  const updateSube = useCallback(
+    (eskiSube: string, yeniSube: string) => {
+      setAppState((prev) => {
+        // Eski şube yoksa hata
+        if (!prev.ayarlar.subeler.includes(eskiSube)) {
+          throw new Error('Güncellenecek şube bulunamadı');
+        }
+
+        // Yeni şube zaten varsa hata
+        if (prev.ayarlar.subeler.includes(yeniSube) && eskiSube !== yeniSube) {
+          throw new Error('Bu şube adı zaten kullanılıyor');
+        }
+
+        return {
+          ...prev,
+          ayarlar: {
+            ...prev.ayarlar,
+            subeler: prev.ayarlar.subeler.map((s) => (s === eskiSube ? yeniSube : s)),
+          },
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Ayarlar',
+              tip: 'GÜNCELLEME',
+              aciklama: `Şube güncellendi: ${eskiSube} → ${yeniSube}`,
+            },
+          ],
+        };
+      });
+    },
+    [setAppState]
+  );
+
+  const deleteSube = useCallback(
+    (sube: string) => {
+      setAppState((prev) => ({
+        ...prev,
+        ayarlar: {
+          ...prev.ayarlar,
+          subeler: prev.ayarlar.subeler.filter((s) => s !== sube),
+        },
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'Ayarlar',
+            tip: 'SİLME',
+            aciklama: `Şube silindi: ${sube}`,
+          },
+        ],
+      }));
+    },
+    [setAppState]
+  );
+
   return {
     // Cari
     addCari,
@@ -3300,5 +3536,13 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     tahsilCekSenet,
     odemeCekSenet,
     ciroCekSenet,
+
+    // Ayarlar
+    addKategori,
+    updateKategori,
+    deleteKategori,
+    addSube,
+    updateSube,
+    deleteSube,
   };
 };
