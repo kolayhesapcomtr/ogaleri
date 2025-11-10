@@ -17,7 +17,7 @@ type ActiveTab = 'alinan' | 'verilen';
 type ModalType = 'none' | 'ekle' | 'tahsilat' | 'odeme' | 'ciro';
 
 export const CekSenetPage = ({ appState, setAppState }: CekSenetPageProps) => {
-  const { addCekSenet, updateCekSenet, deleteCekSenet, tahsilCekSenet, odemeCekSenet, ciroCekSenet } =
+  const { addCekSenet, deleteCekSenet, tahsilCekSenet, odemeCekSenet, ciroCekSenet } =
     useAppService({
       appState,
       setAppState,

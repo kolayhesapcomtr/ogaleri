@@ -17,7 +17,6 @@ import type {
   Kredi,
   KrediOdemesi,
   CekSenet,
-  CekSenetDurum,
 } from '../types';
 import { generateId, getTodayDate, formatCurrency } from '../utils/formatters';
 
