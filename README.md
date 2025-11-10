@@ -12,10 +12,13 @@ Küçük ve orta ölçekli işletmelerin finansal operasyonlarını takip etmesi
 - 👥 **Cari Hesaplar** - Müşteri/Tedarikçi borç-alacak takibi
 - 💰 **Kasa & Banka** - Nakit ve banka hesapları yönetimi
 - 💸 **Giderler** - Gider takibi ve kategorileme
-- 🚗 **Oto Galeri** - Araç alım-satım yönetimi (yakında)
-- 📦 **Stok** - Ürün stok takibi (yakında)
-- 💳 **Kredi Kartları** - Kart harcamaları (yakında)
+- 🚗 **Oto Galeri** - Araç alım-satım yönetimi (peşin/taksitli)
+- 📦 **Stok** - Ürün stok takibi ve yönetimi
+- 📅 **Taksitler** - Borç/alacak taksit takibi
+- 💳 **Kredi Kartları** - Kart yönetimi ve ödeme takibi
+- 📋 **İşlem Kayıtları** - Tüm işlemlerin audit log takibi
 - 📝 **Çek & Senet** - Çek/senet takibi (yakında)
+- ⚙️ **Ayarlar** - Uygulama ayarları (yakında)
 
 ## Teknolojiler
 

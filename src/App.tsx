@@ -9,6 +9,7 @@ import { OtoGaleriPage } from './components/pages/OtoGaleriPage';
 import { StokPage } from './components/pages/StokPage';
 import { TaksitPage } from './components/pages/TaksitPage';
 import { KrediKartiPage } from './components/pages/KrediKartiPage';
+import { CekSenetPage } from './components/pages/CekSenetPage';
 import { IslemKayitlariPage } from './components/pages/IslemKayitlariPage';
 import { AyarlarPage } from './components/pages/AyarlarPage';
 import type { AppState, AppMode } from './types';
@@ -66,10 +67,17 @@ function App() {
             element={<KrediKartiPage appState={appState} setAppState={setAppState} />}
           />
           <Route
+            path="/cek-senet"
+            element={<CekSenetPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
             path="/islem-kayitlari"
             element={<IslemKayitlariPage appState={appState} />}
           />
-          <Route path="/ayarlar" element={<AyarlarPage />} />
+          <Route
+            path="/ayarlar"
+            element={<AyarlarPage appState={appState} setAppState={setAppState} />}
+          />
         </Route>
       </Routes>
     </BrowserRouter>

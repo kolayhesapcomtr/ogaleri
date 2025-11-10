@@ -141,7 +141,46 @@ export const getMockData = (): AppState => {
     urunler: [],
     stokHareketler: [],
     // Çek & Senet
-    cekSenetler: [],
+    cekSenetler: [
+      {
+        id: generateId(),
+        tip: 'Çek',
+        durum: 'Portföyde',
+        cekSenetNo: 'CHK-2024-001',
+        tutar: 15000,
+        vadeTarihi: '2025-02-15',
+        cariId: cari1, // Ahmet Yılmaz (Müşteri)
+        banka: 'İş Bankası',
+        sube: 'Kadıköy',
+        hesapNo: '123456',
+        aciklama: 'Satış ödemesi',
+        olusturmaTarihi: today,
+      },
+      {
+        id: generateId(),
+        tip: 'Senet',
+        durum: 'Portföyde',
+        cekSenetNo: 'SNT-2024-002',
+        tutar: 25000,
+        vadeTarihi: '2025-03-01',
+        cariId: cari3, // XYZ Tedarik (Tedarikçi)
+        aciklama: 'Mal alışı ödemesi',
+        olusturmaTarihi: today,
+      },
+      {
+        id: generateId(),
+        tip: 'Çek',
+        durum: 'Tahsil Edildi',
+        cekSenetNo: 'CHK-2024-003',
+        tutar: 10000,
+        vadeTarihi: '2025-01-10',
+        tahsilTarihi: '2025-01-10',
+        cariId: cari2, // Mehmet Demir (Müşteri)
+        banka: 'Garanti BBVA',
+        aciklama: 'Ödeme tahsil edildi',
+        olusturmaTarihi: today,
+      },
+    ],
     // Krediler
     krediler: [],
     krediOdemeleri: [],

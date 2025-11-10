@@ -1656,74 +1656,93 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [setAppState]
   );
 
-  const updateCekSenetDurum = useCallback(
-    (
-      id: string,
-      durum: CekSenetDurum,
-      tarih: string,
-      hesapId?: string,
-      ciroEdilenCariId?: string
-    ) => {
+  const updateCekSenet = useCallback(
+    (id: string, updates: Partial<CekSenet>) => {
+      setAppState((prev) => ({
+        ...prev,
+        cekSenetler: prev.cekSenetler.map((c) =>
+          c.id === id ? { ...c, ...updates } : c
+        ),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'ÇekSenet',
+            tip: 'GÜNCELLEME',
+            aciklama: `Çek/Senet güncellendi`,
+          },
+        ],
+      }));
+    },
+    [setAppState]
+  );
+
+  const deleteCekSenet = useCallback(
+    (id: string) => {
+      const cekSenet = appState.cekSenetler.find((c) => c.id === id);
+      if (!cekSenet) return;
+
+      // Sadece portföyde olanlar silinebilir
+      if (cekSenet.durum !== 'Portföyde') {
+        throw new Error('Sadece portföyde olan çek/senetler silinebilir');
+      }
+
+      setAppState((prev) => ({
+        ...prev,
+        cekSenetler: prev.cekSenetler.filter((c) => c.id !== id),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'ÇekSenet',
+            tip: 'SİLME',
+            aciklama: `${cekSenet.tip} silindi: ${cekSenet.cekSenetNo}`,
+          },
+        ],
+      }));
+    },
+    [appState.cekSenetler, setAppState]
+  );
+
+  const tahsilCekSenet = useCallback(
+    (id: string, hesapId: string, tarih: string) => {
       const cekSenet = appState.cekSenetler.find((c) => c.id === id);
       if (!cekSenet) {
         throw new Error('Çek/Senet bulunamadı');
       }
 
+      if (cekSenet.durum !== 'Portföyde') {
+        throw new Error('Sadece portföyde olan çek/senetler tahsil edilebilir');
+      }
+
       setAppState((prev) => {
         let newState = { ...prev };
 
-        // Durum güncelle
-        const updates: Partial<CekSenet> = { durum };
+        // Hesap hareketi oluştur
+        const hesapHareket: HesapHareket = {
+          id: generateId(),
+          hesapId,
+          tarih,
+          tip: 'ParaGirişi',
+          tutar: cekSenet.tutar,
+          aciklama: `${cekSenet.tip} tahsil edildi: ${cekSenet.cekSenetNo}`,
+          kaynakModul: 'ÇekSenet',
+          kaynakId: id,
+          kilitli: true,
+        };
 
-        if (durum === 'Tahsil Edildi' && hesapId) {
-          updates.tahsilTarihi = tarih;
+        newState.hesapHareketler = [...prev.hesapHareketler, hesapHareket];
+        newState.hesaplar = prev.hesaplar.map((h) =>
+          h.id === hesapId ? { ...h, bakiye: h.bakiye + cekSenet.tutar } : h
+        );
 
-          const hesapHareket: HesapHareket = {
-            id: generateId(),
-            hesapId,
-            tarih,
-            tip: 'ParaGirişi',
-            tutar: cekSenet.tutar,
-            aciklama: `${cekSenet.tip} tahsil edildi: ${cekSenet.cekSenetNo}`,
-            kaynakModul: 'ÇekSenet',
-            kaynakId: id,
-            kilitli: true,
-          };
-
-          newState.hesapHareketler = [...prev.hesapHareketler, hesapHareket];
-          newState.hesaplar = prev.hesaplar.map((h) =>
-            h.id === hesapId
-              ? { ...h, bakiye: h.bakiye + cekSenet.tutar }
-              : h
-          );
-        } else if (durum === 'Ödendi' && hesapId) {
-          updates.odemeTarihi = tarih;
-
-          const hesapHareket: HesapHareket = {
-            id: generateId(),
-            hesapId,
-            tarih,
-            tip: 'ParaÇıkışı',
-            tutar: cekSenet.tutar,
-            aciklama: `${cekSenet.tip} ödendi: ${cekSenet.cekSenetNo}`,
-            kaynakModul: 'ÇekSenet',
-            kaynakId: id,
-            kilitli: true,
-          };
-
-          newState.hesapHareketler = [...prev.hesapHareketler, hesapHareket];
-          newState.hesaplar = prev.hesaplar.map((h) =>
-            h.id === hesapId
-              ? { ...h, bakiye: h.bakiye - cekSenet.tutar }
-              : h
-          );
-        } else if (durum === 'Ciro Edildi' && ciroEdilenCariId) {
-          updates.ciroTarihi = tarih;
-          updates.ciroEdilenCariId = ciroEdilenCariId;
-        }
-
+        // Çek/Senet durumunu güncelle
         newState.cekSenetler = prev.cekSenetler.map((c) =>
-          c.id === id ? { ...c, ...updates } : c
+          c.id === id
+            ? { ...c, durum: 'Tahsil Edildi', tahsilTarihi: tarih }
+            : c
         );
 
         return {
@@ -1735,11 +1754,104 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
               tarih: new Date().toISOString(),
               modul: 'ÇekSenet',
               tip: 'GÜNCELLEME',
-              aciklama: `${cekSenet.tip} durumu güncellendi: ${durum}`,
+              aciklama: `${cekSenet.tip} tahsil edildi: ${cekSenet.cekSenetNo}`,
             },
           ],
         };
       });
+    },
+    [appState.cekSenetler, setAppState]
+  );
+
+  const odemeCekSenet = useCallback(
+    (id: string, hesapId: string, tarih: string) => {
+      const cekSenet = appState.cekSenetler.find((c) => c.id === id);
+      if (!cekSenet) {
+        throw new Error('Çek/Senet bulunamadı');
+      }
+
+      if (cekSenet.durum !== 'Portföyde') {
+        throw new Error('Sadece portföyde olan çek/senetler ödenebilir');
+      }
+
+      setAppState((prev) => {
+        let newState = { ...prev };
+
+        // Hesap hareketi oluştur
+        const hesapHareket: HesapHareket = {
+          id: generateId(),
+          hesapId,
+          tarih,
+          tip: 'ParaÇıkışı',
+          tutar: cekSenet.tutar,
+          aciklama: `${cekSenet.tip} ödendi: ${cekSenet.cekSenetNo}`,
+          kaynakModul: 'ÇekSenet',
+          kaynakId: id,
+          kilitli: true,
+        };
+
+        newState.hesapHareketler = [...prev.hesapHareketler, hesapHareket];
+        newState.hesaplar = prev.hesaplar.map((h) =>
+          h.id === hesapId ? { ...h, bakiye: h.bakiye - cekSenet.tutar } : h
+        );
+
+        // Çek/Senet durumunu güncelle
+        newState.cekSenetler = prev.cekSenetler.map((c) =>
+          c.id === id ? { ...c, durum: 'Ödendi', odemeTarihi: tarih } : c
+        );
+
+        return {
+          ...newState,
+          islemKayitlari: [
+            ...newState.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'ÇekSenet',
+              tip: 'GÜNCELLEME',
+              aciklama: `${cekSenet.tip} ödendi: ${cekSenet.cekSenetNo}`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.cekSenetler, setAppState]
+  );
+
+  const ciroCekSenet = useCallback(
+    (id: string, ciroEdilenCariId: string, tarih: string) => {
+      const cekSenet = appState.cekSenetler.find((c) => c.id === id);
+      if (!cekSenet) {
+        throw new Error('Çek/Senet bulunamadı');
+      }
+
+      if (cekSenet.durum !== 'Portföyde') {
+        throw new Error('Sadece portföyde olan çek/senetler ciro edilebilir');
+      }
+
+      setAppState((prev) => ({
+        ...prev,
+        cekSenetler: prev.cekSenetler.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                durum: 'Ciro Edildi',
+                ciroTarihi: tarih,
+                ciroEdilenCariId,
+              }
+            : c
+        ),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'ÇekSenet',
+            tip: 'GÜNCELLEME',
+            aciklama: `${cekSenet.tip} ciro edildi: ${cekSenet.cekSenetNo}`,
+          },
+        ],
+      }));
     },
     [appState.cekSenetler, setAppState]
   );
@@ -1789,6 +1901,10 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
 
     // Çek & Senet
     addCekSenet,
-    updateCekSenetDurum,
+    updateCekSenet,
+    deleteCekSenet,
+    tahsilCekSenet,
+    odemeCekSenet,
+    ciroCekSenet,
   };
 };
