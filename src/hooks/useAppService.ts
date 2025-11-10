@@ -17,6 +17,7 @@ import type {
   OdemeYontemi,
   ImmediateOdemeYontemi,
   KrediKarti,
+  KrediKartiHareket,
   Kredi,
   KrediOdemesi,
   CekSenet,
@@ -2574,6 +2575,177 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [appState.krediKartlari, setAppState]
   );
 
+  const deleteKrediKartiHareket = useCallback(
+    (hareketId: string) => {
+      const hareket = appState.krediKartiHareketler.find((h) => h.id === hareketId);
+      if (!hareket) {
+        throw new Error('Kredi kartı hareketi bulunamadı');
+      }
+
+      // Başka modülden gelen hareketler silinemez
+      if (hareket.kaynakModul && hareket.kaynakModul !== 'KrediKartları') {
+        throw new Error(
+          'Bu hareket başka bir modülden gelmiştir. Kaynağı güncelleyerek/silerek değiştirebilirsiniz.'
+        );
+      }
+
+      const krediKarti = appState.krediKartlari.find((k) => k.id === hareket.krediKartiId);
+      if (!krediKarti) {
+        throw new Error('Kredi kartı bulunamadı');
+      }
+
+      setAppState((prev) => {
+        // Bakiyeyi geri al
+        let updatedKrediKartlari = prev.krediKartlari;
+        if (hareket.tip === 'Harcama') {
+          // Harcama silinirse borç azalır
+          updatedKrediKartlari = prev.krediKartlari.map((k) =>
+            k.id === hareket.krediKartiId
+              ? { ...k, bakiye: k.bakiye - hareket.tutar }
+              : k
+          );
+        } else if (hareket.tip === 'Ödeme') {
+          // Ödeme silinirse borç artar
+          updatedKrediKartlari = prev.krediKartlari.map((k) =>
+            k.id === hareket.krediKartiId
+              ? { ...k, bakiye: k.bakiye + hareket.tutar }
+              : k
+          );
+        }
+
+        // Eğer ödeme hareketi ise, ilişkili hesap hareketini de sil
+        let updatedHesapHareketler = prev.hesapHareketler;
+        let updatedHesaplar = prev.hesaplar;
+
+        if (hareket.tip === 'Ödeme' && hareket.kaynakModul === 'KrediKartları') {
+          // İlişkili hesap hareketini bul ve sil
+          const hesapHareket = prev.hesapHareketler.find(
+            (hh) => hh.kaynakModul === 'KrediKartları' && hh.kaynakId === hareketId
+          );
+
+          if (hesapHareket) {
+            updatedHesapHareketler = prev.hesapHareketler.filter(
+              (hh) => hh.id !== hesapHareket.id
+            );
+
+            // Hesap bakiyesini geri al (para çıkışı iptal = para geri gelir)
+            updatedHesaplar = prev.hesaplar.map((h) =>
+              h.id === hesapHareket.hesapId
+                ? { ...h, bakiye: h.bakiye + hareket.tutar }
+                : h
+            );
+          }
+        }
+
+        return {
+          ...prev,
+          krediKartlari: updatedKrediKartlari,
+          krediKartiHareketler: prev.krediKartiHareketler.filter(
+            (h) => h.id !== hareketId
+          ),
+          hesapHareketler: updatedHesapHareketler,
+          hesaplar: updatedHesaplar,
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'KrediKartları',
+              tip: 'SİLME',
+              aciklama: `Kredi kartı hareketi silindi: ${hareket.aciklama || hareket.tip}`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.krediKartiHareketler, appState.krediKartlari, setAppState]
+  );
+
+  const updateKrediKartiHareket = useCallback(
+    (
+      hareketId: string,
+      updates: Partial<Pick<KrediKartiHareket, 'tutar' | 'aciklama'>>
+    ) => {
+      const hareket = appState.krediKartiHareketler.find((h) => h.id === hareketId);
+      if (!hareket) {
+        throw new Error('Kredi kartı hareketi bulunamadı');
+      }
+
+      // Başka modülden gelen hareketler güncellenemez
+      if (hareket.kaynakModul && hareket.kaynakModul !== 'KrediKartları') {
+        throw new Error(
+          'Bu hareket başka bir modülden gelmiştir. Kaynağı güncelleyerek değiştirebilirsiniz.'
+        );
+      }
+
+      setAppState((prev) => {
+        let updatedKrediKartlari = prev.krediKartlari;
+        let updatedHesapHareketler = prev.hesapHareketler;
+        let updatedHesaplar = prev.hesaplar;
+
+        // Tutar değişikliği varsa bakiyeleri güncelle
+        if (updates.tutar !== undefined && updates.tutar !== hareket.tutar) {
+          const fark = updates.tutar - hareket.tutar;
+
+          if (hareket.tip === 'Harcama') {
+            // Harcama artarsa borç artar
+            updatedKrediKartlari = prev.krediKartlari.map((k) =>
+              k.id === hareket.krediKartiId
+                ? { ...k, bakiye: k.bakiye + fark }
+                : k
+            );
+          } else if (hareket.tip === 'Ödeme') {
+            // Ödeme artarsa borç azalır
+            updatedKrediKartlari = prev.krediKartlari.map((k) =>
+              k.id === hareket.krediKartiId
+                ? { ...k, bakiye: k.bakiye - fark }
+                : k
+            );
+
+            // İlişkili hesap hareketini de güncelle
+            const hesapHareket = prev.hesapHareketler.find(
+              (hh) => hh.kaynakModul === 'KrediKartları' && hh.kaynakId === hareketId
+            );
+
+            if (hesapHareket) {
+              updatedHesapHareketler = prev.hesapHareketler.map((hh) =>
+                hh.id === hesapHareket.id ? { ...hh, tutar: updates.tutar! } : hh
+              );
+
+              // Hesap bakiyesini güncelle
+              updatedHesaplar = prev.hesaplar.map((h) =>
+                h.id === hesapHareket.hesapId
+                  ? { ...h, bakiye: h.bakiye - fark }
+                  : h
+              );
+            }
+          }
+        }
+
+        return {
+          ...prev,
+          krediKartlari: updatedKrediKartlari,
+          krediKartiHareketler: prev.krediKartiHareketler.map((h) =>
+            h.id === hareketId ? { ...h, ...updates } : h
+          ),
+          hesapHareketler: updatedHesapHareketler,
+          hesaplar: updatedHesaplar,
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'KrediKartları',
+              tip: 'GÜNCELLEME',
+              aciklama: `Kredi kartı hareketi güncellendi`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.krediKartiHareketler, setAppState]
+  );
+
   // ==================== KREDİLER ====================
 
   const addKredi = useCallback(
@@ -3111,6 +3283,8 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     updateKrediKarti,
     deleteKrediKarti,
     payKrediKartiBorc,
+    deleteKrediKartiHareket,
+    updateKrediKartiHareket,
 
     // Krediler
     addKredi,
