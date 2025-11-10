@@ -3,13 +3,19 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './components/pages/Dashboard';
 import { CariPage } from './components/pages/CariPage';
+import { CariDetailPage } from './components/pages/CariDetailPage';
 import { KasaPage } from './components/pages/KasaPage';
+import { HesapDetailPage } from './components/pages/HesapDetailPage';
 import { GiderPage } from './components/pages/GiderPage';
 import { OtoGaleriPage } from './components/pages/OtoGaleriPage';
+import { AracDetailPage } from './components/pages/AracDetailPage';
 import { StokPage } from './components/pages/StokPage';
+import { UrunDetailPage } from './components/pages/UrunDetailPage';
 import { TaksitPage } from './components/pages/TaksitPage';
 import { KrediKartiPage } from './components/pages/KrediKartiPage';
+import { KrediKartiDetailPage } from './components/pages/KrediKartiDetailPage';
 import { CekSenetPage } from './components/pages/CekSenetPage';
+import { CekSenetDetailPage } from './components/pages/CekSenetDetailPage';
 import { IslemKayitlariPage } from './components/pages/IslemKayitlariPage';
 import { AyarlarPage } from './components/pages/AyarlarPage';
 import type { AppState, AppMode } from './types';
@@ -43,8 +49,16 @@ function App() {
             element={<CariPage appState={appState} setAppState={setAppState} />}
           />
           <Route
+            path="/cari/:id"
+            element={<CariDetailPage appState={appState} />}
+          />
+          <Route
             path="/kasa"
             element={<KasaPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
+            path="/kasa/:id"
+            element={<HesapDetailPage appState={appState} />}
           />
           <Route
             path="/gider"
@@ -55,8 +69,16 @@ function App() {
             element={<OtoGaleriPage appState={appState} setAppState={setAppState} />}
           />
           <Route
+            path="/oto-galeri/:id"
+            element={<AracDetailPage appState={appState} />}
+          />
+          <Route
             path="/stok"
             element={<StokPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
+            path="/stok/:id"
+            element={<UrunDetailPage appState={appState} />}
           />
           <Route
             path="/taksitler"
@@ -67,8 +89,16 @@ function App() {
             element={<KrediKartiPage appState={appState} setAppState={setAppState} />}
           />
           <Route
+            path="/kredi-kartlari/:id"
+            element={<KrediKartiDetailPage appState={appState} />}
+          />
+          <Route
             path="/cek-senet"
             element={<CekSenetPage appState={appState} setAppState={setAppState} />}
+          />
+          <Route
+            path="/cek-senet/:id"
+            element={<CekSenetDetailPage appState={appState} />}
           />
           <Route
             path="/islem-kayitlari"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { KrediKarti, AppState } from '../../types';
 import { useAppService } from '../../hooks/useAppService';
 import { Button } from '../common/Button';
@@ -16,6 +17,7 @@ interface KrediKartiPageProps {
 type ModalType = 'none' | 'kart' | 'odeme';
 
 export const KrediKartiPage = ({ appState, setAppState }: KrediKartiPageProps) => {
+  const navigate = useNavigate();
   const { addKrediKarti, updateKrediKarti, deleteKrediKarti, payKrediKartiBorc } =
     useAppService({
       appState,
@@ -137,7 +139,12 @@ export const KrediKartiPage = ({ appState, setAppState }: KrediKartiPageProps) =
               <div key={kart.id} className="bg-white rounded-lg shadow p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-semibold text-gray-900">{kart.ad}</h3>
+                    <button
+                      onClick={() => navigate(`/kredi-kartlari/${kart.id}`)}
+                      className="font-semibold text-primary hover:text-primary-dark text-lg text-left"
+                    >
+                      {kart.ad}
+                    </button>
                     <p className="text-sm text-gray-600">{kart.banka}</p>
                   </div>
                   <div className="flex gap-2">

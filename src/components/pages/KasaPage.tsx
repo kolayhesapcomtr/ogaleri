@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Hesap, HesapTip, AppState } from '../../types';
 import { useAppService } from '../../hooks/useAppService';
 import { Button } from '../common/Button';
@@ -14,6 +15,7 @@ interface KasaPageProps {
 }
 
 export const KasaPage = ({ appState, setAppState }: KasaPageProps) => {
+  const navigate = useNavigate();
   const { addHesap, updateHesap, deleteHesap } = useAppService({
     appState,
     setAppState,
@@ -108,9 +110,12 @@ export const KasaPage = ({ appState, setAppState }: KasaPageProps) => {
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-lg">
+                  <button
+                    onClick={() => navigate(`/kasa/${hesap.id}`)}
+                    className="font-semibold text-primary hover:text-primary-dark text-lg text-left"
+                  >
                     {hesap.ad}
-                  </h3>
+                  </button>
                   <span
                     className={`inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
                       hesap.tip === 'Kasa'

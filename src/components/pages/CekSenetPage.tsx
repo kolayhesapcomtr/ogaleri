@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { CekSenet, AppState, CekSenetTip, CekSenetDurum } from '../../types';
 import { useAppService } from '../../hooks/useAppService';
 import { Button } from '../common/Button';
@@ -17,6 +18,7 @@ type ActiveTab = 'alinan' | 'verilen';
 type ModalType = 'none' | 'ekle' | 'tahsilat' | 'odeme' | 'ciro';
 
 export const CekSenetPage = ({ appState, setAppState }: CekSenetPageProps) => {
+  const navigate = useNavigate();
   const { addCekSenet, deleteCekSenet, tahsilCekSenet, odemeCekSenet, ciroCekSenet } =
     useAppService({
       appState,
@@ -232,7 +234,12 @@ export const CekSenetPage = ({ appState, setAppState }: CekSenetPageProps) => {
                     <span className="text-sm font-medium text-gray-900">{cs.tip}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{cs.cekSenetNo}</div>
+                    <button
+                      onClick={() => navigate(`/cek-senet/${cs.id}`)}
+                      className="text-sm font-medium text-primary hover:text-primary-dark text-left"
+                    >
+                      {cs.cekSenetNo}
+                    </button>
                     {cs.banka && (
                       <div className="text-xs text-gray-500">{cs.banka}</div>
                     )}
@@ -307,9 +314,12 @@ export const CekSenetPage = ({ appState, setAppState }: CekSenetPageProps) => {
             <div key={cs.id} className="bg-white rounded-lg shadow p-4">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="font-semibold text-gray-900">
+                  <button
+                    onClick={() => navigate(`/cek-senet/${cs.id}`)}
+                    className="font-semibold text-primary hover:text-primary-dark text-left"
+                  >
                     {cs.tip} - {cs.cekSenetNo}
-                  </h3>
+                  </button>
                   <p className="text-sm text-gray-500">{getCariAd(cs.cariId)}</p>
                 </div>
                 <span

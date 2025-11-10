@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Cari, CariTip, AppState } from '../../types';
 import { useAppService } from '../../hooks/useAppService';
 import { Button } from '../common/Button';
@@ -14,6 +15,7 @@ interface CariPageProps {
 }
 
 export const CariPage = ({ appState, setAppState }: CariPageProps) => {
+  const navigate = useNavigate();
   const { addCari, updateCari, deleteCari } = useAppService({
     appState,
     setAppState,
@@ -138,7 +140,12 @@ export const CariPage = ({ appState, setAppState }: CariPageProps) => {
               appState.cariler.map((cari) => (
                 <tr key={cari.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">{cari.ad}</div>
+                    <button
+                      onClick={() => navigate(`/cari/${cari.id}`)}
+                      className="font-medium text-primary hover:text-primary-dark"
+                    >
+                      {cari.ad}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -194,7 +201,12 @@ export const CariPage = ({ appState, setAppState }: CariPageProps) => {
             <div key={cari.id} className="bg-white rounded-lg shadow p-4">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{cari.ad}</h3>
+                  <button
+                    onClick={() => navigate(`/cari/${cari.id}`)}
+                    className="font-semibold text-primary hover:text-primary-dark text-left"
+                  >
+                    {cari.ad}
+                  </button>
                   <span
                     className={`inline-block mt-1 px-2 text-xs leading-5 font-semibold rounded-full ${
                       cari.tip === 'Müşteri'

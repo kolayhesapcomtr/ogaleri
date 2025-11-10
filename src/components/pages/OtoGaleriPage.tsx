@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Arac, AppState, OdemeYontemi } from '../../types';
 import { useAppService } from '../../hooks/useAppService';
 import { Button } from '../common/Button';
@@ -16,6 +17,7 @@ interface OtoGaleriPageProps {
 type ModalType = 'none' | 'pesin' | 'taksitli' | 'maliyet' | 'satis';
 
 export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => {
+  const navigate = useNavigate();
   const { addAracPesin, addAracTaksitli, addAracMaliyet } = useAppService({
     appState,
     setAppState,
@@ -215,9 +217,12 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
                 return (
                   <tr key={arac.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">
+                      <button
+                        onClick={() => navigate(`/oto-galeri/${arac.id}`)}
+                        className="font-medium text-primary hover:text-primary-dark text-left"
+                      >
                         {arac.marka} {arac.model}
-                      </div>
+                      </button>
                       <div className="text-sm text-gray-500">{arac.yil}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -293,9 +298,12 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
               <div key={arac.id} className="bg-white rounded-lg shadow p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h3 className="font-semibold text-gray-900">
+                    <button
+                      onClick={() => navigate(`/oto-galeri/${arac.id}`)}
+                      className="font-semibold text-primary hover:text-primary-dark text-left"
+                    >
                       {arac.marka} {arac.model}
-                    </h3>
+                    </button>
                     <p className="text-sm text-gray-500">
                       {arac.yil} - {arac.plaka}
                     </p>
