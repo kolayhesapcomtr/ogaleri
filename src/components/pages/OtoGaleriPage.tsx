@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Arac, AppState, OdemeYontemi } from '../../types';
+import type { Arac, AppState, ImmediateOdemeYontemi } from '../../types';
 import { useAppService } from '../../hooks/useAppService';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
@@ -14,11 +14,11 @@ interface OtoGaleriPageProps {
   setAppState: React.Dispatch<React.SetStateAction<AppState>>;
 }
 
-type ModalType = 'none' | 'pesin' | 'taksitli' | 'maliyet' | 'satis';
+type ModalType = 'none' | 'pesin' | 'taksitli' | 'maliyet' | 'satis' | 'satisTaksitli';
 
 export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => {
   const navigate = useNavigate();
-  const { addAracPesin, addAracTaksitli, addAracMaliyet, sellArac } = useAppService({
+  const { addAracPesin, addAracTaksitli, addAracMaliyet, sellArac, sellAracTaksitli } = useAppService({
     appState,
     setAppState,
   });
@@ -63,7 +63,7 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
   const [maliyetForm, setMaliyetForm] = useState({
     kategori: '',
     tutar: 0,
-    odemeYontemi: 'Nakit' as OdemeYontemi,
+    odemeYontemi: 'Nakit' as ImmediateOdemeYontemi,
     hesapId: '',
     krediKartiId: '',
     aciklama: '',
@@ -75,9 +75,18 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
     satisFiyati: 0,
     satisTarihi: new Date().toISOString().split('T')[0],
     musteriCariId: '',
-    odemeYontemi: 'Nakit' as OdemeYontemi,
+    odemeYontemi: 'Nakit' as ImmediateOdemeYontemi,
     hesapId: '',
     krediKartiId: '',
+    aciklama: '',
+  });
+
+  // Taksitli Satış Form
+  const [satisTaksitliForm, setSatisTaksitliForm] = useState({
+    satisFiyati: 0,
+    satisTarihi: new Date().toISOString().split('T')[0],
+    musteriCariId: '',
+    taksitSayisi: 12,
     aciklama: '',
   });
 
@@ -166,6 +175,22 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
       sellArac({
         aracId: selectedArac.id,
         ...satisForm,
+      });
+      handleCloseModal();
+    }
+  };
+
+  const handleSatisTaksitliSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedArac) {
+      if (!satisTaksitliForm.musteriCariId || satisTaksitliForm.satisFiyati <= 0 || satisTaksitliForm.taksitSayisi <= 0) {
+        alert('Lütfen tüm zorunlu alanları doldurun');
+        return;
+      }
+
+      sellAracTaksitli({
+        aracId: selectedArac.id,
+        ...satisTaksitliForm,
       });
       handleCloseModal();
     }
@@ -307,9 +332,16 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
                           <button
                             onClick={() => handleOpenModal('satis', arac)}
                             className="text-green-600 hover:text-green-700"
-                            title="Satış Yap"
+                            title="Peşin Satış"
                           >
                             💰
+                          </button>
+                          <button
+                            onClick={() => handleOpenModal('satisTaksitli', arac)}
+                            className="text-blue-600 hover:text-blue-700"
+                            title="Taksitli Satış"
+                          >
+                            📅
                           </button>
                         </div>
                       )}
@@ -395,20 +427,28 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
                 </div>
 
                 {arac.durum === 'Stokta' && (
-                  <div className="mt-4 pt-3 border-t flex gap-2">
+                  <div className="mt-4 pt-3 border-t space-y-2">
                     <Button
                       onClick={() => handleOpenModal('maliyet', arac)}
-                      className="flex-1"
+                      className="w-full"
                       variant="secondary"
                     >
                       Maliyet Ekle
                     </Button>
-                    <Button
-                      onClick={() => handleOpenModal('satis', arac)}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      Satış Yap
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleOpenModal('satis', arac)}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        💰 Peşin Satış
+                      </Button>
+                      <Button
+                        onClick={() => handleOpenModal('satisTaksitli', arac)}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        📅 Taksitli
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -853,7 +893,7 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
             onChange={(e) =>
               setMaliyetForm({
                 ...maliyetForm,
-                odemeYontemi: e.target.value as OdemeYontemi,
+                odemeYontemi: e.target.value as ImmediateOdemeYontemi,
                 hesapId: '',
                 krediKartiId: '',
               })
@@ -1017,7 +1057,7 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
             onChange={(e) =>
               setSatisForm({
                 ...satisForm,
-                odemeYontemi: e.target.value as OdemeYontemi,
+                odemeYontemi: e.target.value as ImmediateOdemeYontemi,
                 hesapId: '',
                 krediKartiId: '',
               })
@@ -1087,6 +1127,166 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="flex-1">
               Satışı Tamamla
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseModal}
+              className="flex-1"
+            >
+              İptal
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Taksitli Satış Modal */}
+      <Modal
+        isOpen={modalType === 'satisTaksitli'}
+        onClose={handleCloseModal}
+        title="Taksitli Araç Satışı"
+      >
+        <form onSubmit={handleSatisTaksitliSubmit} className="space-y-4">
+          {selectedArac && (
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <h3 className="font-semibold mb-2">
+                {selectedArac.marka} {selectedArac.model}
+              </h3>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Plaka:</span>
+                  <span className="font-medium">{selectedArac.plaka}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Toplam Maliyet:</span>
+                  <span className="font-medium text-orange-600">
+                    {formatCurrency(selectedArac.toplamMaliyet)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Input
+            type="number"
+            step="0.01"
+            label="Satış Fiyatı *"
+            value={satisTaksitliForm.satisFiyati || ''}
+            onChange={(e) =>
+              setSatisTaksitliForm({
+                ...satisTaksitliForm,
+                satisFiyati: parseFloat(e.target.value) || 0,
+              })
+            }
+            required
+          />
+
+          {selectedArac && satisTaksitliForm.satisFiyati > 0 && (
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-700">Kar/Zarar:</span>
+                <span
+                  className={`font-bold ${
+                    satisTaksitliForm.satisFiyati - selectedArac.toplamMaliyet >= 0
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  {satisTaksitliForm.satisFiyati - selectedArac.toplamMaliyet >= 0
+                    ? '+'
+                    : ''}
+                  {formatCurrency(
+                    satisTaksitliForm.satisFiyati - selectedArac.toplamMaliyet
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <Input
+            type="date"
+            label="Satış Tarihi *"
+            value={satisTaksitliForm.satisTarihi}
+            onChange={(e) =>
+              setSatisTaksitliForm({ ...satisTaksitliForm, satisTarihi: e.target.value })
+            }
+            required
+          />
+
+          <Select
+            label="Cari (Alıcı) *"
+            value={satisTaksitliForm.musteriCariId}
+            onChange={(e) =>
+              setSatisTaksitliForm({ ...satisTaksitliForm, musteriCariId: e.target.value })
+            }
+            options={[
+              { value: '', label: 'Cari Seçiniz...' },
+              ...cariList.map((c) => ({
+                value: c.id,
+                label: `${c.ad} (${c.tip})`,
+              })),
+            ]}
+            required
+          />
+
+          <Select
+            label="Taksit Sayısı *"
+            value={satisTaksitliForm.taksitSayisi.toString()}
+            onChange={(e) =>
+              setSatisTaksitliForm({
+                ...satisTaksitliForm,
+                taksitSayisi: parseInt(e.target.value),
+              })
+            }
+            options={[
+              { value: '3', label: '3 Taksit' },
+              { value: '6', label: '6 Taksit' },
+              { value: '9', label: '9 Taksit' },
+              { value: '12', label: '12 Taksit' },
+              { value: '18', label: '18 Taksit' },
+              { value: '24', label: '24 Taksit' },
+              { value: '36', label: '36 Taksit' },
+            ]}
+            required
+          />
+
+          {satisTaksitliForm.satisFiyati > 0 && satisTaksitliForm.taksitSayisi > 0 && (
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Aylık Taksit:</span>
+                  <span className="font-semibold text-primary">
+                    {formatCurrency(satisTaksitliForm.satisFiyati / satisTaksitliForm.taksitSayisi)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Açıklama
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              rows={2}
+              value={satisTaksitliForm.aciklama}
+              onChange={(e) =>
+                setSatisTaksitliForm({ ...satisTaksitliForm, aciklama: e.target.value })
+              }
+            />
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <strong>Not:</strong> Taksitli satışta cari hesabına alacak kaydedilir ve
+              taksit planı oluşturulur. Taksitler Taksitler modülünden tahsil edilebilir.
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
+              Taksitli Satışı Tamamla
             </Button>
             <Button
               type="button"

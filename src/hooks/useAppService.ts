@@ -8,11 +8,14 @@ import type {
   Gider,
   Arac,
   AracMaliyet,
+  AracDurum,
   TaksitliBorc,
+  TaksitliAlacak,
   TaksitOdemesi,
   Urun,
   StokHareket,
   OdemeYontemi,
+  ImmediateOdemeYontemi,
   KrediKarti,
   Kredi,
   KrediOdemesi,
@@ -764,7 +767,7 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
       tarih: string;
       kategori: string;
       tutar: number;
-      odemeYontemi: 'Nakit' | 'Banka' | 'Kredi Kartı';
+      odemeYontemi: ImmediateOdemeYontemi;
       hesapId?: string;
       krediKartiId?: string;
       aciklama?: string;
@@ -883,7 +886,7 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
       satisFiyati: number;
       satisTarihi: string;
       musteriCariId: string;
-      odemeYontemi: 'Nakit' | 'Banka' | 'Kredi Kartı';
+      odemeYontemi: ImmediateOdemeYontemi;
       hesapId?: string;
       krediKartiId?: string;
       aciklama?: string;
@@ -1042,6 +1045,116 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
               modul: 'OtoGaleri',
               tip: 'GÜNCELLEME',
               aciklama: `Araç satıldı: ${arac.marka} ${arac.model} (${arac.plaka}) - Kar/Zarar: ${formatCurrency(karZarar)}`,
+            },
+          ],
+        };
+      });
+
+      return arac;
+    },
+    [appState.araclar, setAppState]
+  );
+
+  const sellAracTaksitli = useCallback(
+    (sellData: {
+      aracId: string;
+      satisFiyati: number;
+      satisTarihi: string;
+      musteriCariId: string;
+      taksitSayisi: number;
+      aciklama?: string;
+    }) => {
+      const arac = appState.araclar.find((a) => a.id === sellData.aracId);
+      if (!arac) {
+        throw new Error('Araç bulunamadı');
+      }
+
+      const karZarar = sellData.satisFiyati - arac.toplamMaliyet;
+      const taksitTutari = sellData.satisFiyati / sellData.taksitSayisi;
+
+      setAppState((prev) => {
+        // 1. Cari hareketi oluştur (Müşteri için Alacak)
+        const cariHareket: CariHareket = {
+          id: generateId(),
+          cariId: sellData.musteriCariId,
+          tarih: sellData.satisTarihi,
+          tip: 'Alacak',
+          tutar: sellData.satisFiyati,
+          aciklama: `Taksitli araç satışı: ${arac.marka} ${arac.model} (${arac.plaka})`,
+          kaynakModul: 'OtoGaleri',
+          kaynakId: arac.id,
+          kilitli: true,
+        };
+
+        const updatedCariHareketler = [...prev.cariHareketler, cariHareket];
+        const updatedCariler = prev.cariler.map((c) =>
+          c.id === sellData.musteriCariId
+            ? { ...c, bakiye: c.bakiye - sellData.satisFiyati }
+            : c
+        );
+
+        // 2. TaksitliAlacak oluştur
+        const newTaksitliAlacak: TaksitliAlacak = {
+          id: generateId(),
+          baslik: `${arac.marka} ${arac.model} Satışı`,
+          cariId: sellData.musteriCariId,
+          toplamTutar: sellData.satisFiyati,
+          kalanTutar: sellData.satisFiyati,
+          taksitSayisi: sellData.taksitSayisi,
+          taksitTutari: taksitTutari,
+          baslangicTarihi: sellData.satisTarihi,
+          aciklama: sellData.aciklama,
+          kaynakModul: 'OtoGaleri',
+          kaynakId: arac.id,
+          olusturmaTarihi: getTodayDate(),
+        };
+
+        // 3. Taksit ödemelerini oluştur
+        const baslangic = new Date(sellData.satisTarihi);
+        const taksitler: TaksitOdemesi[] = [];
+        for (let i = 1; i <= sellData.taksitSayisi; i++) {
+          const vadeTarihi = new Date(baslangic);
+          vadeTarihi.setMonth(vadeTarihi.getMonth() + i);
+          taksitler.push({
+            id: generateId(),
+            taksitliId: newTaksitliAlacak.id,
+            tip: 'Alacak',
+            taksitNo: i,
+            tutar: taksitTutari,
+            vadeTarihi: vadeTarihi.toISOString().split('T')[0],
+            durum: 'Beklemede',
+          });
+        }
+
+        // 4. Aracı güncelle
+        const updatedAraclar = prev.araclar.map((a) =>
+          a.id === sellData.aracId
+            ? {
+                ...a,
+                durum: 'Satıldı' as AracDurum,
+                satisFiyati: sellData.satisFiyati,
+                satisTarihi: sellData.satisTarihi,
+                musteriCariId: sellData.musteriCariId,
+                karZarar,
+              }
+            : a
+        );
+
+        return {
+          ...prev,
+          araclar: updatedAraclar,
+          cariler: updatedCariler,
+          cariHareketler: updatedCariHareketler,
+          taksitliAlacaklar: [...prev.taksitliAlacaklar, newTaksitliAlacak],
+          taksitOdemeleri: [...prev.taksitOdemeleri, ...taksitler],
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'OtoGaleri',
+              tip: 'OLUŞTURMA',
+              aciklama: `Taksitli araç satışı: ${arac.marka} ${arac.model} (${sellData.taksitSayisi} taksit)`,
             },
           ],
         };
@@ -1402,6 +1515,283 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
               modul: 'Stok',
               tip: 'OLUŞTURMA',
               aciklama: `Stok çıkışı: ${urun.ad} (${stokData.miktar} ${urun.birim})`,
+            },
+          ],
+        };
+      });
+
+      return stokHareketId;
+    },
+    [appState.urunler, setAppState]
+  );
+
+  const addStokGirisTaksitli = useCallback(
+    (stokData: {
+      urunId: string;
+      miktar: number;
+      birimFiyat: number;
+      tarih: string;
+      cariId: string;
+      taksitSayisi: number;
+      aciklama?: string;
+    }) => {
+      const urun = appState.urunler.find((u) => u.id === stokData.urunId);
+      if (!urun) {
+        throw new Error('Ürün bulunamadı');
+      }
+
+      if (!stokData.cariId) {
+        throw new Error('Tedarikçi seçmelisiniz');
+      }
+
+      const toplamTutar = stokData.miktar * stokData.birimFiyat;
+      const taksitTutari = toplamTutar / stokData.taksitSayisi;
+      const stokHareketId = generateId();
+
+      setAppState((prev) => {
+        let newState = { ...prev };
+
+        // 1. Stok hareketini oluştur
+        const newStokHareket: StokHareket = {
+          id: stokHareketId,
+          urunId: stokData.urunId,
+          tarih: stokData.tarih,
+          tip: 'Giriş',
+          miktar: stokData.miktar,
+          birimFiyat: stokData.birimFiyat,
+          toplamTutar,
+          cariId: stokData.cariId,
+          aciklama: stokData.aciklama || `Taksitli stok alışı: ${urun.ad}`,
+          olusturmaTarihi: new Date().toISOString(),
+        };
+
+        // 2. Ürün stok miktarını artır
+        newState.urunler = prev.urunler.map((u) =>
+          u.id === stokData.urunId
+            ? {
+                ...u,
+                stokMiktari: u.stokMiktari + stokData.miktar,
+                alisFiyati: stokData.birimFiyat,
+              }
+            : u
+        );
+
+        // 3. Cari hareketi oluştur (Borç)
+        const cariHareket: CariHareket = {
+          id: generateId(),
+          cariId: stokData.cariId,
+          tarih: stokData.tarih,
+          tip: 'Borç',
+          tutar: toplamTutar,
+          aciklama: `Taksitli stok alışı: ${urun.ad} (${stokData.miktar} ${urun.birim})`,
+          kaynakModul: 'Stok',
+          kaynakId: stokHareketId,
+          kilitli: true,
+        };
+
+        newState.cariHareketler = [...prev.cariHareketler, cariHareket];
+
+        // Cari bakiyesini güncelle (borç = negatif)
+        newState.cariler = prev.cariler.map((c) =>
+          c.id === stokData.cariId
+            ? { ...c, bakiye: c.bakiye - toplamTutar }
+            : c
+        );
+
+        // 4. TaksitliBorc oluştur
+        const newTaksitliBorc: TaksitliBorc = {
+          id: generateId(),
+          baslik: `${urun.ad} Taksitli Alışı`,
+          cariId: stokData.cariId,
+          toplamTutar,
+          kalanTutar: toplamTutar,
+          taksitSayisi: stokData.taksitSayisi,
+          taksitTutari,
+          baslangicTarihi: stokData.tarih,
+          kaynakModul: 'Stok',
+          kaynakId: stokHareketId,
+          olusturmaTarihi: getTodayDate(),
+        };
+
+        newState.taksitliBorclar = [...prev.taksitliBorclar, newTaksitliBorc];
+
+        // 5. Taksit ödemelerini oluştur
+        const baslangic = new Date(stokData.tarih);
+        const taksitler: TaksitOdemesi[] = [];
+        for (let i = 1; i <= stokData.taksitSayisi; i++) {
+          const vadeTarihi = new Date(baslangic);
+          vadeTarihi.setMonth(vadeTarihi.getMonth() + i);
+
+          taksitler.push({
+            id: generateId(),
+            taksitliId: newTaksitliBorc.id,
+            tip: 'Borç',
+            taksitNo: i,
+            tutar: taksitTutari,
+            vadeTarihi: vadeTarihi.toISOString().split('T')[0],
+            durum: 'Beklemede',
+          });
+        }
+
+        newState.taksitOdemeleri = [...prev.taksitOdemeleri, ...taksitler];
+
+        // 6. Gider kaydı oluştur
+        const gider: Gider = {
+          id: generateId(),
+          tarih: stokData.tarih,
+          kategori: 'Stok Alışı',
+          tutar: toplamTutar,
+          odemeYontemi: 'Taksitli',
+          aciklama: `Taksitli stok alışı: ${urun.ad} (${stokData.miktar} ${urun.birim}) - ${stokData.taksitSayisi} taksit`,
+          olusturmaTarihi: new Date().toISOString(),
+        };
+
+        return {
+          ...newState,
+          stokHareketler: [...prev.stokHareketler, newStokHareket],
+          giderler: [...newState.giderler, gider],
+          islemKayitlari: [
+            ...newState.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Stok',
+              tip: 'OLUŞTURMA',
+              aciklama: `Taksitli stok girişi: ${urun.ad} (${stokData.miktar} ${urun.birim}) - ${stokData.taksitSayisi} taksit`,
+            },
+          ],
+        };
+      });
+
+      return stokHareketId;
+    },
+    [appState.urunler, setAppState]
+  );
+
+  const addStokCikisTaksitli = useCallback(
+    (stokData: {
+      urunId: string;
+      miktar: number;
+      birimFiyat: number;
+      tarih: string;
+      cariId: string;
+      taksitSayisi: number;
+      aciklama?: string;
+    }) => {
+      const urun = appState.urunler.find((u) => u.id === stokData.urunId);
+      if (!urun) {
+        throw new Error('Ürün bulunamadı');
+      }
+
+      if (urun.stokMiktari < stokData.miktar) {
+        throw new Error('Yetersiz stok miktarı');
+      }
+
+      if (!stokData.cariId) {
+        throw new Error('Müşteri seçmelisiniz');
+      }
+
+      const toplamTutar = stokData.miktar * stokData.birimFiyat;
+      const taksitTutari = toplamTutar / stokData.taksitSayisi;
+      const stokHareketId = generateId();
+
+      setAppState((prev) => {
+        let newState = { ...prev };
+
+        // 1. Stok hareketini oluştur
+        const newStokHareket: StokHareket = {
+          id: stokHareketId,
+          urunId: stokData.urunId,
+          tarih: stokData.tarih,
+          tip: 'Çıkış',
+          miktar: stokData.miktar,
+          birimFiyat: stokData.birimFiyat,
+          toplamTutar,
+          cariId: stokData.cariId,
+          aciklama: stokData.aciklama || `Taksitli stok satışı: ${urun.ad}`,
+          olusturmaTarihi: new Date().toISOString(),
+        };
+
+        // 2. Ürün stok miktarını azalt
+        newState.urunler = prev.urunler.map((u) =>
+          u.id === stokData.urunId
+            ? { ...u, stokMiktari: u.stokMiktari - stokData.miktar }
+            : u
+        );
+
+        // 3. Cari hareketi oluştur (Alacak)
+        const cariHareket: CariHareket = {
+          id: generateId(),
+          cariId: stokData.cariId,
+          tarih: stokData.tarih,
+          tip: 'Alacak',
+          tutar: toplamTutar,
+          aciklama: `Taksitli stok satışı: ${urun.ad} (${stokData.miktar} ${urun.birim})`,
+          kaynakModul: 'Stok',
+          kaynakId: stokHareketId,
+          kilitli: true,
+        };
+
+        newState.cariHareketler = [...prev.cariHareketler, cariHareket];
+
+        // Cari bakiyesini güncelle (alacak = pozitif)
+        newState.cariler = prev.cariler.map((c) =>
+          c.id === stokData.cariId
+            ? { ...c, bakiye: c.bakiye + toplamTutar }
+            : c
+        );
+
+        // 4. TaksitliAlacak oluştur
+        const newTaksitliAlacak: TaksitliAlacak = {
+          id: generateId(),
+          baslik: `${urun.ad} Taksitli Satışı`,
+          cariId: stokData.cariId,
+          toplamTutar,
+          kalanTutar: toplamTutar,
+          taksitSayisi: stokData.taksitSayisi,
+          taksitTutari,
+          baslangicTarihi: stokData.tarih,
+          kaynakModul: 'Stok',
+          kaynakId: stokHareketId,
+          olusturmaTarihi: getTodayDate(),
+        };
+
+        newState.taksitliAlacaklar = [
+          ...prev.taksitliAlacaklar,
+          newTaksitliAlacak,
+        ];
+
+        // 5. Taksit ödemelerini oluştur
+        const baslangic = new Date(stokData.tarih);
+        const taksitler: TaksitOdemesi[] = [];
+        for (let i = 1; i <= stokData.taksitSayisi; i++) {
+          const vadeTarihi = new Date(baslangic);
+          vadeTarihi.setMonth(vadeTarihi.getMonth() + i);
+
+          taksitler.push({
+            id: generateId(),
+            taksitliId: newTaksitliAlacak.id,
+            tip: 'Alacak',
+            taksitNo: i,
+            tutar: taksitTutari,
+            vadeTarihi: vadeTarihi.toISOString().split('T')[0],
+            durum: 'Beklemede',
+          });
+        }
+
+        newState.taksitOdemeleri = [...prev.taksitOdemeleri, ...taksitler];
+
+        return {
+          ...newState,
+          stokHareketler: [...prev.stokHareketler, newStokHareket],
+          islemKayitlari: [
+            ...newState.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Stok',
+              tip: 'OLUŞTURMA',
+              aciklama: `Taksitli stok çıkışı: ${urun.ad} (${stokData.miktar} ${urun.birim}) - ${stokData.taksitSayisi} taksit`,
             },
           ],
         };
@@ -2271,6 +2661,7 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     addAracTaksitli,
     addAracMaliyet,
     sellArac,
+    sellAracTaksitli,
 
     // Stok
     addUrun,
@@ -2278,6 +2669,8 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     deleteUrun,
     addStokGiris,
     addStokCikis,
+    addStokGirisTaksitli,
+    addStokCikisTaksitli,
 
     // Taksitler
     payBorcTaksit,

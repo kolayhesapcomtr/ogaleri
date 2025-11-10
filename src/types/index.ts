@@ -5,7 +5,8 @@ export type CariTip = 'Müşteri' | 'Tedarikçi';
 
 export type HesapTip = 'Kasa' | 'Banka';
 
-export type OdemeYontemi = 'Nakit' | 'Banka' | 'Kredi Kartı';
+export type OdemeYontemi = 'Nakit' | 'Banka' | 'Kredi Kartı' | 'Taksitli';
+export type ImmediateOdemeYontemi = 'Nakit' | 'Banka' | 'Kredi Kartı';
 
 export type CariHareketTip =
   | 'Alacak'

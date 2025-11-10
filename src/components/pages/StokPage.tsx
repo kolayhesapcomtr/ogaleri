@@ -14,15 +14,22 @@ interface StokPageProps {
   setAppState: React.Dispatch<React.SetStateAction<AppState>>;
 }
 
-type ModalType = 'none' | 'urun' | 'giris' | 'cikis';
+type ModalType = 'none' | 'urun' | 'giris' | 'cikis' | 'girisTaksitli' | 'cikisTaksitli';
 
 export const StokPage = ({ appState, setAppState }: StokPageProps) => {
   const navigate = useNavigate();
-  const { addUrun, updateUrun, deleteUrun, addStokGiris, addStokCikis } =
-    useAppService({
-      appState,
-      setAppState,
-    });
+  const {
+    addUrun,
+    updateUrun,
+    deleteUrun,
+    addStokGiris,
+    addStokCikis,
+    addStokGirisTaksitli,
+    addStokCikisTaksitli,
+  } = useAppService({
+    appState,
+    setAppState,
+  });
 
   const [modalType, setModalType] = useState<ModalType>('none');
   const [editingUrun, setEditingUrun] = useState<Urun | null>(null);
@@ -60,6 +67,26 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
     cariId: '',
     odemeYontemi: 'Nakit' as OdemeYontemi,
     hesapId: '',
+    aciklama: '',
+  });
+
+  // Taksitli Giriş Form
+  const [girisTaksitliForm, setGirisTaksitliForm] = useState({
+    miktar: 0,
+    birimFiyat: 0,
+    tarih: new Date().toISOString().split('T')[0],
+    cariId: '',
+    taksitSayisi: 12,
+    aciklama: '',
+  });
+
+  // Taksitli Çıkış Form
+  const [cikisTaksitliForm, setCikisTaksitliForm] = useState({
+    miktar: 0,
+    birimFiyat: 0,
+    tarih: new Date().toISOString().split('T')[0],
+    cariId: '',
+    taksitSayisi: 12,
     aciklama: '',
   });
 
@@ -121,6 +148,32 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
     setModalType('cikis');
   };
 
+  const handleOpenGirisTaksitliModal = (urun: Urun) => {
+    setSelectedUrun(urun);
+    setGirisTaksitliForm({
+      miktar: 0,
+      birimFiyat: urun.alisFiyati,
+      tarih: new Date().toISOString().split('T')[0],
+      cariId: '',
+      taksitSayisi: 12,
+      aciklama: '',
+    });
+    setModalType('girisTaksitli');
+  };
+
+  const handleOpenCikisTaksitliModal = (urun: Urun) => {
+    setSelectedUrun(urun);
+    setCikisTaksitliForm({
+      miktar: 0,
+      birimFiyat: urun.satisFiyati,
+      tarih: new Date().toISOString().split('T')[0],
+      cariId: '',
+      taksitSayisi: 12,
+      aciklama: '',
+    });
+    setModalType('cikisTaksitli');
+  };
+
   const handleCloseModal = () => {
     setModalType('none');
     setEditingUrun(null);
@@ -159,6 +212,44 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
         addStokCikis({
           urunId: selectedUrun.id,
           ...cikisForm,
+        });
+        handleCloseModal();
+      } catch (error) {
+        alert((error as Error).message);
+      }
+    }
+  };
+
+  const handleGirisTaksitliSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedUrun) {
+      if (!girisTaksitliForm.cariId || girisTaksitliForm.miktar <= 0) {
+        alert('Lütfen tüm zorunlu alanları doldurun');
+        return;
+      }
+      try {
+        addStokGirisTaksitli({
+          urunId: selectedUrun.id,
+          ...girisTaksitliForm,
+        });
+        handleCloseModal();
+      } catch (error) {
+        alert((error as Error).message);
+      }
+    }
+  };
+
+  const handleCikisTaksitliSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedUrun) {
+      if (!cikisTaksitliForm.cariId || cikisTaksitliForm.miktar <= 0) {
+        alert('Lütfen tüm zorunlu alanları doldurun');
+        return;
+      }
+      try {
+        addStokCikisTaksitli({
+          urunId: selectedUrun.id,
+          ...cikisTaksitliForm,
         });
         handleCloseModal();
       } catch (error) {
@@ -289,17 +380,32 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
                       <button
                         onClick={() => handleOpenGirisModal(urun)}
                         className="text-green-600 hover:text-green-900"
-                        title="Stok Girişi"
+                        title="Peşin Giriş"
                       >
                         <Icons.ArrowDown />
                       </button>
                       <button
+                        onClick={() => handleOpenGirisTaksitliModal(urun)}
+                        className="text-green-600 hover:text-green-900"
+                        title="Taksitli Giriş"
+                      >
+                        📅
+                      </button>
+                      <button
                         onClick={() => handleOpenCikisModal(urun)}
                         className="text-blue-600 hover:text-blue-900"
-                        title="Stok Çıkışı"
+                        title="Peşin Çıkış"
                         disabled={urun.stokMiktari === 0}
                       >
                         <Icons.ArrowUp />
+                      </button>
+                      <button
+                        onClick={() => handleOpenCikisTaksitliModal(urun)}
+                        className="text-purple-600 hover:text-purple-900"
+                        title="Taksitli Çıkış"
+                        disabled={urun.stokMiktari === 0}
+                      >
+                        💳
                       </button>
                       <button
                         onClick={() => handleOpenUrunModal(urun)}
@@ -395,21 +501,37 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-3 border-t">
-                  <Button
-                    onClick={() => handleOpenGirisModal(urun)}
-                    variant="secondary"
-                    className="flex-1"
-                  >
-                    Giriş
-                  </Button>
-                  <Button
-                    onClick={() => handleOpenCikisModal(urun)}
-                    className="flex-1"
-                    disabled={urun.stokMiktari === 0}
-                  >
-                    Çıkış
-                  </Button>
+                <div className="flex flex-col gap-2 pt-3 border-t">
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleOpenGirisModal(urun)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      ↓ Peşin Giriş
+                    </Button>
+                    <Button
+                      onClick={() => handleOpenGirisTaksitliModal(urun)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      📅 Taksitli
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleOpenCikisModal(urun)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={urun.stokMiktari === 0}
+                    >
+                      ↑ Peşin Çıkış
+                    </Button>
+                    <Button
+                      onClick={() => handleOpenCikisTaksitliModal(urun)}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                      disabled={urun.stokMiktari === 0}
+                    >
+                      💳 Taksitli
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
@@ -832,6 +954,341 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="flex-1">
               Kaydet
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseModal}
+              className="flex-1"
+            >
+              İptal
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Taksitli Giriş Modal */}
+      <Modal
+        isOpen={modalType === 'girisTaksitli'}
+        onClose={handleCloseModal}
+        title={`Taksitli Stok Girişi - ${selectedUrun?.ad}`}
+      >
+        <form onSubmit={handleGirisTaksitliSubmit} className="space-y-4">
+          {selectedUrun && (
+            <div className="p-3 bg-gray-50 rounded-lg mb-4">
+              <div className="text-sm">
+                <div className="font-medium text-gray-900">{selectedUrun.ad}</div>
+                <div className="text-gray-600">Kategori: {selectedUrun.kategori}</div>
+                <div className="text-gray-600">
+                  Mevcut Stok: {selectedUrun.stokMiktari} {selectedUrun.birim}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Miktar *"
+              type="number"
+              step="0.01"
+              value={girisTaksitliForm.miktar}
+              onChange={(e) =>
+                setGirisTaksitliForm({
+                  ...girisTaksitliForm,
+                  miktar: parseFloat(e.target.value) || 0,
+                })
+              }
+              required
+            />
+
+            <Input
+              label="Birim Fiyat *"
+              type="number"
+              step="0.01"
+              value={girisTaksitliForm.birimFiyat}
+              onChange={(e) =>
+                setGirisTaksitliForm({
+                  ...girisTaksitliForm,
+                  birimFiyat: parseFloat(e.target.value) || 0,
+                })
+              }
+              required
+            />
+          </div>
+
+          <Input
+            label="Tarih *"
+            type="date"
+            value={girisTaksitliForm.tarih}
+            onChange={(e) =>
+              setGirisTaksitliForm({ ...girisTaksitliForm, tarih: e.target.value })
+            }
+            required
+          />
+
+          <Select
+            label="Tedarikçi *"
+            value={girisTaksitliForm.cariId}
+            onChange={(e) =>
+              setGirisTaksitliForm({ ...girisTaksitliForm, cariId: e.target.value })
+            }
+            options={[
+              { value: '', label: 'Cari Seçiniz...' },
+              ...cariList.map((c) => ({
+                value: c.id,
+                label: `${c.ad} (${c.tip})`,
+              })),
+            ]}
+            required
+          />
+
+          <Select
+            label="Taksit Sayısı *"
+            value={girisTaksitliForm.taksitSayisi}
+            onChange={(e) =>
+              setGirisTaksitliForm({
+                ...girisTaksitliForm,
+                taksitSayisi: parseInt(e.target.value),
+              })
+            }
+            options={[
+              { value: '3', label: '3 Ay' },
+              { value: '6', label: '6 Ay' },
+              { value: '9', label: '9 Ay' },
+              { value: '12', label: '12 Ay' },
+              { value: '18', label: '18 Ay' },
+              { value: '24', label: '24 Ay' },
+              { value: '36', label: '36 Ay' },
+            ]}
+            required
+          />
+
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="text-sm text-gray-700">
+              <div className="flex justify-between mb-2">
+                <span>Toplam Tutar:</span>
+                <span className="font-semibold">
+                  {formatCurrency(
+                    girisTaksitliForm.miktar * girisTaksitliForm.birimFiyat
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Aylık Taksit:</span>
+                <span className="font-semibold text-blue-700">
+                  {formatCurrency(
+                    (girisTaksitliForm.miktar * girisTaksitliForm.birimFiyat) /
+                      girisTaksitliForm.taksitSayisi
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-2 bg-yellow-50 rounded text-xs text-yellow-700">
+            ℹ️ Taksitli alım planı oluşturulacak ve Taksitler modülünde
+            görüntülenebilecektir.
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Açıklama
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              rows={3}
+              value={girisTaksitliForm.aciklama}
+              onChange={(e) =>
+                setGirisTaksitliForm({
+                  ...girisTaksitliForm,
+                  aciklama: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1">
+              Taksitli Alış Yap
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseModal}
+              className="flex-1"
+            >
+              İptal
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Taksitli Çıkış Modal */}
+      <Modal
+        isOpen={modalType === 'cikisTaksitli'}
+        onClose={handleCloseModal}
+        title={`Taksitli Stok Satışı - ${selectedUrun?.ad}`}
+      >
+        <form onSubmit={handleCikisTaksitliSubmit} className="space-y-4">
+          {selectedUrun && (
+            <div className="p-3 bg-gray-50 rounded-lg mb-4">
+              <div className="text-sm">
+                <div className="font-medium text-gray-900">{selectedUrun.ad}</div>
+                <div className="text-gray-600">Kategori: {selectedUrun.kategori}</div>
+                <div className="text-gray-600">
+                  Mevcut Stok: {selectedUrun.stokMiktari} {selectedUrun.birim}
+                </div>
+                <div className="text-gray-600">
+                  Alış Fiyatı: {formatCurrency(selectedUrun.alisFiyati)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Miktar *"
+              type="number"
+              step="0.01"
+              value={cikisTaksitliForm.miktar}
+              onChange={(e) =>
+                setCikisTaksitliForm({
+                  ...cikisTaksitliForm,
+                  miktar: parseFloat(e.target.value) || 0,
+                })
+              }
+              required
+            />
+
+            <Input
+              label="Birim Fiyat *"
+              type="number"
+              step="0.01"
+              value={cikisTaksitliForm.birimFiyat}
+              onChange={(e) =>
+                setCikisTaksitliForm({
+                  ...cikisTaksitliForm,
+                  birimFiyat: parseFloat(e.target.value) || 0,
+                })
+              }
+              required
+            />
+          </div>
+
+          {selectedUrun && cikisTaksitliForm.birimFiyat > 0 && (
+            <div className="p-2 bg-gray-50 rounded text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Kar/Zarar:</span>
+                <span
+                  className={
+                    cikisTaksitliForm.birimFiyat > selectedUrun.alisFiyati
+                      ? 'text-green-600 font-semibold'
+                      : 'text-red-600 font-semibold'
+                  }
+                >
+                  {formatCurrency(
+                    (cikisTaksitliForm.birimFiyat - selectedUrun.alisFiyati) *
+                      cikisTaksitliForm.miktar
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <Input
+            label="Tarih *"
+            type="date"
+            value={cikisTaksitliForm.tarih}
+            onChange={(e) =>
+              setCikisTaksitliForm({ ...cikisTaksitliForm, tarih: e.target.value })
+            }
+            required
+          />
+
+          <Select
+            label="Müşteri *"
+            value={cikisTaksitliForm.cariId}
+            onChange={(e) =>
+              setCikisTaksitliForm({ ...cikisTaksitliForm, cariId: e.target.value })
+            }
+            options={[
+              { value: '', label: 'Cari Seçiniz...' },
+              ...cariList.map((c) => ({
+                value: c.id,
+                label: `${c.ad} (${c.tip})`,
+              })),
+            ]}
+            required
+          />
+
+          <Select
+            label="Taksit Sayısı *"
+            value={cikisTaksitliForm.taksitSayisi}
+            onChange={(e) =>
+              setCikisTaksitliForm({
+                ...cikisTaksitliForm,
+                taksitSayisi: parseInt(e.target.value),
+              })
+            }
+            options={[
+              { value: '3', label: '3 Ay' },
+              { value: '6', label: '6 Ay' },
+              { value: '9', label: '9 Ay' },
+              { value: '12', label: '12 Ay' },
+              { value: '18', label: '18 Ay' },
+              { value: '24', label: '24 Ay' },
+              { value: '36', label: '36 Ay' },
+            ]}
+            required
+          />
+
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="text-sm text-gray-700">
+              <div className="flex justify-between mb-2">
+                <span>Toplam Tutar:</span>
+                <span className="font-semibold">
+                  {formatCurrency(
+                    cikisTaksitliForm.miktar * cikisTaksitliForm.birimFiyat
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Aylık Taksit:</span>
+                <span className="font-semibold text-blue-700">
+                  {formatCurrency(
+                    (cikisTaksitliForm.miktar * cikisTaksitliForm.birimFiyat) /
+                      cikisTaksitliForm.taksitSayisi
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-2 bg-yellow-50 rounded text-xs text-yellow-700">
+            ℹ️ Taksitli satış planı oluşturulacak ve Taksitler modülünde
+            görüntülenebilecektir.
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Açıklama
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              rows={3}
+              value={cikisTaksitliForm.aciklama}
+              onChange={(e) =>
+                setCikisTaksitliForm({
+                  ...cikisTaksitliForm,
+                  aciklama: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1">
+              Taksitli Satış Yap
             </Button>
             <Button
               type="button"
