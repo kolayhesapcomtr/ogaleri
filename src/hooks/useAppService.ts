@@ -16,7 +16,6 @@ import type {
   KrediKarti,
   Kredi,
   KrediOdemesi,
-  TaksitDurum,
   CekSenet,
   CekSenetDurum,
 } from '../types';
@@ -484,7 +483,6 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
         );
 
         // Cari bakiyesi değişmez (alacak ve ödeme birbirini götürüyor)
-        const updatedCariler = prev.cariler; // Bakiye sıfır
 
         return {
           ...prev,

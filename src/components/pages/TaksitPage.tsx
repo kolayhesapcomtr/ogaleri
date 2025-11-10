@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import type { AppState, TaksitliBorc, TaksitliAlacak, TaksitOdemesi } from '../../types';
+import type { AppState, TaksitOdemesi } from '../../types';
 import { useAppService } from '../../hooks/useAppService';
 import { Button } from '../common/Button';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Select } from '../common/Select';
-import { Icons } from '../../constants/icons';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 interface TaksitPageProps {

@@ -6,7 +6,7 @@ import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Select } from '../common/Select';
 import { Icons } from '../../constants/icons';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
 
 interface OtoGaleriPageProps {
   appState: AppState;
@@ -140,16 +140,6 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
       });
       handleCloseModal();
     }
-  };
-
-  const getAracMaliyetler = (aracId: string) => {
-    return appState.aracMaliyetler.filter((m) => m.aracId === aracId);
-  };
-
-  const getToplam = (aracId: string) => {
-    const arac = appState.araclar.find((a) => a.id === aracId);
-    if (!arac) return 0;
-    return arac.toplamMaliyet;
   };
 
   const getKar = (arac: Arac) => {
