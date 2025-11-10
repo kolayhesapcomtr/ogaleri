@@ -1,17 +1,67 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { AppState } from '../../types';
 import { Button } from '../common/Button';
+import { Modal } from '../common/Modal';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { useAppService } from '../../hooks/useAppService';
 
 interface CariDetailPageProps {
   appState: AppState;
+  setAppState: React.Dispatch<React.SetStateAction<AppState>>;
 }
 
-export const CariDetailPage = ({ appState }: CariDetailPageProps) => {
+export const CariDetailPage = ({ appState, setAppState }: CariDetailPageProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { addCariHareket } = useAppService({ appState, setAppState });
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'tahsilat' | 'odeme'>('tahsilat');
+  const [hareketForm, setHareketForm] = useState({
+    tutar: 0,
+    tarih: new Date().toISOString().split('T')[0],
+    aciklama: '',
+  });
 
   const cari = appState.cariler.find((c) => c.id === id);
+
+  const handleOpenModal = (type: 'tahsilat' | 'odeme') => {
+    setModalType(type);
+    setHareketForm({
+      tutar: 0,
+      tarih: new Date().toISOString().split('T')[0],
+      aciklama: '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setHareketForm({
+      tutar: 0,
+      tarih: new Date().toISOString().split('T')[0],
+      aciklama: '',
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || hareketForm.tutar <= 0) {
+      alert('Lütfen geçerli bir tutar girin');
+      return;
+    }
+
+    addCariHareket({
+      cariId: id,
+      tip: modalType === 'tahsilat' ? 'Tahsilat' : 'Ödeme',
+      tutar: hareketForm.tutar,
+      tarih: hareketForm.tarih,
+      aciklama: hareketForm.aciklama || undefined,
+    });
+
+    handleCloseModal();
+  };
 
   if (!cari) {
     return (
@@ -104,18 +154,37 @@ export const CariDetailPage = ({ appState }: CariDetailPageProps) => {
                 </span>
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Bakiye</p>
-              <p
-                className={`text-2xl font-bold ${
-                  cari.bakiye >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {formatCurrency(Math.abs(cari.bakiye))}
-              </p>
-              <p className="text-xs text-gray-500">
-                {cari.bakiye >= 0 ? 'Alacak' : 'Borç'}
-              </p>
+            <div className="flex flex-col gap-2">
+              <div className="text-right mb-2">
+                <p className="text-sm text-gray-600">Bakiye</p>
+                <p
+                  className={`text-2xl font-bold ${
+                    cari.bakiye >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {formatCurrency(Math.abs(cari.bakiye))}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {cari.bakiye >= 0 ? 'Alacak' : 'Borç'}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {cari.tip === 'Müşteri' ? (
+                  <Button
+                    onClick={() => handleOpenModal('tahsilat')}
+                    className="bg-green-600 hover:bg-green-700 text-white text-sm"
+                  >
+                    💰 Tahsilat
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleOpenModal('odeme')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  >
+                    💸 Ödeme
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -302,6 +371,77 @@ export const CariDetailPage = ({ appState }: CariDetailPageProps) => {
           </>
         )}
       </div>
+
+      {/* Manuel Hareket Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={modalType === 'tahsilat' ? 'Tahsilat Yap' : 'Ödeme Yap'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tutar *
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={hareketForm.tutar || ''}
+              onChange={(e) =>
+                setHareketForm({ ...hareketForm, tutar: parseFloat(e.target.value) || 0 })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tarih *
+            </label>
+            <input
+              type="date"
+              value={hareketForm.tarih}
+              onChange={(e) =>
+                setHareketForm({ ...hareketForm, tarih: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Açıklama
+            </label>
+            <textarea
+              value={hareketForm.aciklama}
+              onChange={(e) =>
+                setHareketForm({ ...hareketForm, aciklama: e.target.value })
+              }
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={handleCloseModal}>
+              İptal
+            </Button>
+            <Button
+              type="submit"
+              className={
+                modalType === 'tahsilat'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }
+            >
+              {modalType === 'tahsilat' ? 'Tahsilat Yap' : 'Ödeme Yap'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

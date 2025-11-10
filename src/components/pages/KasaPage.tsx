@@ -16,16 +16,24 @@ interface KasaPageProps {
 
 export const KasaPage = ({ appState, setAppState }: KasaPageProps) => {
   const navigate = useNavigate();
-  const { addHesap, updateHesap, deleteHesap } = useAppService({
+  const { addHesap, updateHesap, deleteHesap, virman } = useAppService({
     appState,
     setAppState,
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVirmanModalOpen, setIsVirmanModalOpen] = useState(false);
   const [editingHesap, setEditingHesap] = useState<Hesap | null>(null);
   const [formData, setFormData] = useState({
     ad: '',
     tip: 'Kasa' as HesapTip,
+    aciklama: '',
+  });
+  const [virmanForm, setVirmanForm] = useState({
+    kaynakHesapId: '',
+    hedefHesapId: '',
+    tutar: 0,
+    tarih: new Date().toISOString().split('T')[0],
     aciklama: '',
   });
 
@@ -71,6 +79,39 @@ export const KasaPage = ({ appState, setAppState }: KasaPageProps) => {
     }
   };
 
+  const handleOpenVirmanModal = () => {
+    setVirmanForm({
+      kaynakHesapId: '',
+      hedefHesapId: '',
+      tutar: 0,
+      tarih: new Date().toISOString().split('T')[0],
+      aciklama: '',
+    });
+    setIsVirmanModalOpen(true);
+  };
+
+  const handleCloseVirmanModal = () => {
+    setIsVirmanModalOpen(false);
+    setVirmanForm({
+      kaynakHesapId: '',
+      hedefHesapId: '',
+      tutar: 0,
+      tarih: new Date().toISOString().split('T')[0],
+      aciklama: '',
+    });
+  };
+
+  const handleVirmanSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!virmanForm.kaynakHesapId || !virmanForm.hedefHesapId || virmanForm.tutar <= 0) {
+      alert('Lütfen tüm alanları doldurun');
+      return;
+    }
+
+    virman(virmanForm);
+    handleCloseVirmanModal();
+  };
+
   const toplamBakiye = appState.hesaplar.reduce(
     (sum, hesap) => sum + hesap.bakiye,
     0
@@ -80,12 +121,20 @@ export const KasaPage = ({ appState, setAppState }: KasaPageProps) => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Kasa & Banka</h1>
-        <Button onClick={() => handleOpenModal()}>
-          <div className="flex items-center gap-2">
-            <Icons.Add />
-            <span>Yeni Hesap</span>
-          </div>
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleOpenVirmanModal} variant="secondary">
+            <div className="flex items-center gap-2">
+              <span>⇄</span>
+              <span>Virman</span>
+            </div>
+          </Button>
+          <Button onClick={() => handleOpenModal()}>
+            <div className="flex items-center gap-2">
+              <Icons.Add />
+              <span>Yeni Hesap</span>
+            </div>
+          </Button>
+        </div>
       </div>
 
       {/* Toplam Bakiye Kartı */}
@@ -212,6 +261,100 @@ export const KasaPage = ({ appState, setAppState }: KasaPageProps) => {
               type="button"
               variant="secondary"
               onClick={handleCloseModal}
+              className="flex-1"
+            >
+              İptal
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Virman Modal */}
+      <Modal
+        isOpen={isVirmanModalOpen}
+        onClose={handleCloseVirmanModal}
+        title="Hesaplar Arası Virman"
+      >
+        <form onSubmit={handleVirmanSubmit} className="space-y-4">
+          <Select
+            label="Kaynak Hesap *"
+            value={virmanForm.kaynakHesapId}
+            onChange={(e) =>
+              setVirmanForm({ ...virmanForm, kaynakHesapId: e.target.value })
+            }
+            options={[
+              { value: '', label: 'Seçiniz...' },
+              ...appState.hesaplar.map((h) => ({
+                value: h.id,
+                label: `${h.ad} (${formatCurrency(h.bakiye)})`,
+              })),
+            ]}
+            required
+          />
+
+          <Select
+            label="Hedef Hesap *"
+            value={virmanForm.hedefHesapId}
+            onChange={(e) =>
+              setVirmanForm({ ...virmanForm, hedefHesapId: e.target.value })
+            }
+            options={[
+              { value: '', label: 'Seçiniz...' },
+              ...appState.hesaplar
+                .filter((h) => h.id !== virmanForm.kaynakHesapId)
+                .map((h) => ({
+                  value: h.id,
+                  label: `${h.ad} (${formatCurrency(h.bakiye)})`,
+                })),
+            ]}
+            required
+          />
+
+          <Input
+            type="number"
+            label="Tutar *"
+            value={virmanForm.tutar || ''}
+            onChange={(e) =>
+              setVirmanForm({ ...virmanForm, tutar: parseFloat(e.target.value) || 0 })
+            }
+            required
+            step="0.01"
+            min="0"
+          />
+
+          <Input
+            type="date"
+            label="Tarih *"
+            value={virmanForm.tarih}
+            onChange={(e) =>
+              setVirmanForm({ ...virmanForm, tarih: e.target.value })
+            }
+            required
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Açıklama
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              rows={2}
+              value={virmanForm.aciklama}
+              onChange={(e) =>
+                setVirmanForm({ ...virmanForm, aciklama: e.target.value })
+              }
+              placeholder="Virman açıklaması..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
+              Virman Yap
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseVirmanModal}
               className="flex-1"
             >
               İptal

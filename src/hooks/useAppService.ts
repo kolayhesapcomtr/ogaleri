@@ -247,6 +247,91 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [setAppState]
   );
 
+  const virman = useCallback(
+    (data: {
+      kaynakHesapId: string;
+      hedefHesapId: string;
+      tutar: number;
+      tarih: string;
+      aciklama?: string;
+    }) => {
+      const { kaynakHesapId, hedefHesapId, tutar, tarih, aciklama } = data;
+
+      if (kaynakHesapId === hedefHesapId) {
+        alert('Kaynak ve hedef hesap aynı olamaz');
+        return;
+      }
+
+      const kaynakHesap = appState.hesaplar.find((h) => h.id === kaynakHesapId);
+      const hedefHesap = appState.hesaplar.find((h) => h.id === hedefHesapId);
+
+      if (!kaynakHesap || !hedefHesap) {
+        alert('Hesaplar bulunamadı');
+        return;
+      }
+
+      if (kaynakHesap.bakiye < tutar) {
+        if (!confirm(`${kaynakHesap.ad} hesabında yeterli bakiye yok. Yine de devam edilsin mi?`)) {
+          return;
+        }
+      }
+
+      setAppState((prev) => {
+        // İki hareket oluştur: VirmanGiden ve VirmanGelen
+        const virmanGidenHareket: HesapHareket = {
+          id: generateId(),
+          hesapId: kaynakHesapId,
+          tarih,
+          tip: 'VirmanGiden',
+          tutar,
+          aciklama: aciklama || `Virman: ${hedefHesap.ad} hesabına`,
+          kilitli: false,
+        };
+
+        const virmanGelenHareket: HesapHareket = {
+          id: generateId(),
+          hesapId: hedefHesapId,
+          tarih,
+          tip: 'VirmanGelen',
+          tutar,
+          aciklama: aciklama || `Virman: ${kaynakHesap.ad} hesabından`,
+          kilitli: false,
+        };
+
+        // Hesap bakiyelerini güncelle
+        const updatedHesaplar = prev.hesaplar.map((hesap) => {
+          if (hesap.id === kaynakHesapId) {
+            return { ...hesap, bakiye: hesap.bakiye - tutar };
+          } else if (hesap.id === hedefHesapId) {
+            return { ...hesap, bakiye: hesap.bakiye + tutar };
+          }
+          return hesap;
+        });
+
+        return {
+          ...prev,
+          hesaplar: updatedHesaplar,
+          hesapHareketler: [
+            ...prev.hesapHareketler,
+            virmanGidenHareket,
+            virmanGelenHareket,
+          ],
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Kasa&Banka',
+              tip: 'OLUŞTURMA',
+              aciklama: `Virman: ${kaynakHesap.ad} → ${hedefHesap.ad} (${formatCurrency(tutar)})`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.hesaplar, setAppState]
+  );
+
   // ==================== GİDERLER ====================
 
   const addGider = useCallback(
@@ -2152,6 +2237,7 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     updateHesap,
     deleteHesap,
     addHesapHareket,
+    virman,
 
     // Gider
     addGider,

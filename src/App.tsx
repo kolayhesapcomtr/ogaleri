@@ -52,7 +52,7 @@ function App() {
           />
           <Route
             path="/cari/:id"
-            element={<CariDetailPage appState={appState} />}
+            element={<CariDetailPage appState={appState} setAppState={setAppState} />}
           />
           <Route
             path="/kasa"
@@ -60,7 +60,7 @@ function App() {
           />
           <Route
             path="/kasa/:id"
-            element={<HesapDetailPage appState={appState} />}
+            element={<HesapDetailPage appState={appState} setAppState={setAppState} />}
           />
           <Route
             path="/gider"
