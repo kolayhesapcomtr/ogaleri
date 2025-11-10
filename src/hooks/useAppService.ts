@@ -2232,6 +2232,191 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [appState.taksitOdemeleri, appState.taksitliAlacaklar, setAppState]
   );
 
+  const cancelTaksitliBorc = useCallback(
+    (taksitliBorcId: string) => {
+      const taksitliBorc = appState.taksitliBorclar.find((b) => b.id === taksitliBorcId);
+      if (!taksitliBorc) {
+        throw new Error('Taksitli borç bulunamadı');
+      }
+
+      // İlgili taksitleri kontrol et
+      const taksitler = appState.taksitOdemeleri.filter(
+        (t) => t.taksitliId === taksitliBorcId
+      );
+
+      // Herhangi bir taksit ödenmişse iptal edilemez
+      const odenenTaksit = taksitler.find((t) => t.durum === 'Ödendi');
+      if (odenenTaksit) {
+        throw new Error(
+          'Ödeme yapılmış taksitli plan iptal edilemez. Önce ödemeleri geri almalısınız.'
+        );
+      }
+
+      setAppState((prev) => {
+        // İlk cari borcunu bul ve sil
+        const initialCariHareket = prev.cariHareketler.find(
+          (ch) =>
+            ch.kaynakModul === taksitliBorc.kaynakModul &&
+            ch.kaynakId === taksitliBorc.kaynakId &&
+            ch.tip === 'Borç' &&
+            ch.kilitli === true
+        );
+
+        let updatedCariHareketler = prev.cariHareketler;
+        let updatedCariler = prev.cariler;
+
+        if (initialCariHareket) {
+          // Cari hareketi sil
+          updatedCariHareketler = prev.cariHareketler.filter(
+            (ch) => ch.id !== initialCariHareket.id
+          );
+
+          // Cari bakiyesini geri yükle (borcu geri al = pozitif)
+          updatedCariler = prev.cariler.map((c) =>
+            c.id === taksitliBorc.cariId
+              ? { ...c, bakiye: c.bakiye + taksitliBorc.toplamTutar }
+              : c
+          );
+        }
+
+        return {
+          ...prev,
+          taksitliBorclar: prev.taksitliBorclar.filter((b) => b.id !== taksitliBorcId),
+          taksitOdemeleri: prev.taksitOdemeleri.filter(
+            (t) => t.taksitliId !== taksitliBorcId
+          ),
+          cariHareketler: updatedCariHareketler,
+          cariler: updatedCariler,
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Taksitler',
+              tip: 'SİLME',
+              aciklama: `Taksitli borç planı iptal edildi: ${taksitliBorc.baslik}`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.taksitliBorclar, appState.taksitOdemeleri, setAppState]
+  );
+
+  const cancelTaksitliAlacak = useCallback(
+    (taksitliAlacakId: string) => {
+      const taksitliAlacak = appState.taksitliAlacaklar.find(
+        (a) => a.id === taksitliAlacakId
+      );
+      if (!taksitliAlacak) {
+        throw new Error('Taksitli alacak bulunamadı');
+      }
+
+      // İlgili taksitleri kontrol et
+      const taksitler = appState.taksitOdemeleri.filter(
+        (t) => t.taksitliId === taksitliAlacakId
+      );
+
+      // Herhangi bir taksit tahsil edilmişse iptal edilemez
+      const tahsilEdilen = taksitler.find((t) => t.durum === 'Ödendi');
+      if (tahsilEdilen) {
+        throw new Error(
+          'Tahsilat yapılmış taksitli plan iptal edilemez. Önce tahsilatları geri almalısınız.'
+        );
+      }
+
+      setAppState((prev) => {
+        // İlk cari alacağını bul ve sil
+        const initialCariHareket = prev.cariHareketler.find(
+          (ch) =>
+            ch.kaynakModul === taksitliAlacak.kaynakModul &&
+            ch.kaynakId === taksitliAlacak.kaynakId &&
+            ch.tip === 'Alacak' &&
+            ch.kilitli === true
+        );
+
+        let updatedCariHareketler = prev.cariHareketler;
+        let updatedCariler = prev.cariler;
+
+        if (initialCariHareket) {
+          // Cari hareketi sil
+          updatedCariHareketler = prev.cariHareketler.filter(
+            (ch) => ch.id !== initialCariHareket.id
+          );
+
+          // Cari bakiyesini geri yükle (alacağı geri al = negatif)
+          updatedCariler = prev.cariler.map((c) =>
+            c.id === taksitliAlacak.cariId
+              ? { ...c, bakiye: c.bakiye + taksitliAlacak.toplamTutar }
+              : c
+          );
+        }
+
+        return {
+          ...prev,
+          taksitliAlacaklar: prev.taksitliAlacaklar.filter(
+            (a) => a.id !== taksitliAlacakId
+          ),
+          taksitOdemeleri: prev.taksitOdemeleri.filter(
+            (t) => t.taksitliId !== taksitliAlacakId
+          ),
+          cariHareketler: updatedCariHareketler,
+          cariler: updatedCariler,
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'Taksitler',
+              tip: 'SİLME',
+              aciklama: `Taksitli alacak planı iptal edildi: ${taksitliAlacak.baslik}`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.taksitliAlacaklar, appState.taksitOdemeleri, setAppState]
+  );
+
+  const updateTaksitVadeTarihi = useCallback(
+    (taksitId: string, yeniVadeTarihi: string) => {
+      const taksit = appState.taksitOdemeleri.find((t) => t.id === taksitId);
+      if (!taksit) {
+        throw new Error('Taksit bulunamadı');
+      }
+
+      // Ödenmiş taksitlerin vade tarihi değiştirilemez
+      if (taksit.durum === 'Ödendi') {
+        throw new Error('Ödenmiş taksitlerin vade tarihi değiştirilemez');
+      }
+
+      const taksitPlan =
+        taksit.tip === 'Borç'
+          ? appState.taksitliBorclar.find((b) => b.id === taksit.taksitliId)
+          : appState.taksitliAlacaklar.find((a) => a.id === taksit.taksitliId);
+
+      const planBaslik = taksitPlan?.baslik || 'Bilinmeyen';
+
+      setAppState((prev) => ({
+        ...prev,
+        taksitOdemeleri: prev.taksitOdemeleri.map((t) =>
+          t.id === taksitId ? { ...t, vadeTarihi: yeniVadeTarihi } : t
+        ),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'Taksitler',
+            tip: 'GÜNCELLEME',
+            aciklama: `Taksit vade tarihi değiştirildi: ${planBaslik} (${taksit.taksitNo}. taksit)`,
+          },
+        ],
+      }));
+    },
+    [appState.taksitOdemeleri, appState.taksitliBorclar, appState.taksitliAlacaklar, setAppState]
+  );
+
   // ==================== KREDİ KARTLARI ====================
 
   const addKrediKarti = useCallback(
@@ -2917,6 +3102,9 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     // Taksitler
     payBorcTaksit,
     payAlacakTaksit,
+    cancelTaksitliBorc,
+    cancelTaksitliAlacak,
+    updateTaksitVadeTarihi,
 
     // Kredi Kartları
     addKrediKarti,
