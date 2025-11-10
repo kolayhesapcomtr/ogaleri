@@ -941,6 +941,183 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [appState.araclar, appState.aracMaliyetler, setAppState]
   );
 
+  const updateAracMaliyet = useCallback(
+    (
+      id: string,
+      updates: Partial<Pick<AracMaliyet, 'kategori' | 'tutar' | 'aciklama'>>
+    ) => {
+      const maliyet = appState.aracMaliyetler.find((m) => m.id === id);
+      if (!maliyet) {
+        throw new Error('Maliyet kaydı bulunamadı');
+      }
+
+      const gider = appState.giderler.find((g) => g.id === maliyet.giderId);
+      if (!gider) {
+        throw new Error('İlişkili gider kaydı bulunamadı');
+      }
+
+      setAppState((prev) => {
+        let updatedHesaplar = prev.hesaplar;
+        let updatedHesapHareketler = prev.hesapHareketler;
+        let updatedKrediKartlari = prev.krediKartlari;
+        let updatedKrediKartiHareketler = prev.krediKartiHareketler;
+        let updatedAraclar = prev.araclar;
+
+        // Tutar değişikliği varsa muhasebe güncellemesi gerekir
+        if (updates.tutar !== undefined && updates.tutar !== maliyet.tutar) {
+          const fark = updates.tutar - maliyet.tutar;
+
+          // Araç toplamMaliyet'ini güncelle
+          updatedAraclar = prev.araclar.map((a) =>
+            a.id === maliyet.aracId
+              ? { ...a, toplamMaliyet: a.toplamMaliyet + fark }
+              : a
+          );
+
+          // Ödeme yöntemine göre hesap/kredi kartı güncellemesi
+          if (gider.hesapId) {
+            // Hesap bakiyesini güncelle
+            updatedHesaplar = prev.hesaplar.map((h) =>
+              h.id === gider.hesapId ? { ...h, bakiye: h.bakiye - fark } : h
+            );
+
+            // Hesap hareketini güncelle
+            updatedHesapHareketler = prev.hesapHareketler.map((hh) =>
+              hh.kaynakModul === 'OtoGaleri' && hh.kaynakId === id
+                ? { ...hh, tutar: updates.tutar! }
+                : hh
+            );
+          } else if (gider.krediKartiId) {
+            // Kredi kartı bakiyesini güncelle
+            updatedKrediKartlari = prev.krediKartlari.map((kk) =>
+              kk.id === gider.krediKartiId ? { ...kk, bakiye: kk.bakiye + fark } : kk
+            );
+
+            // Kredi kartı hareketini güncelle
+            updatedKrediKartiHareketler = prev.krediKartiHareketler.map((kkh) =>
+              kkh.kaynakModul === 'OtoGaleri' && kkh.kaynakId === id
+                ? { ...kkh, tutar: updates.tutar! }
+                : kkh
+            );
+          }
+        }
+
+        return {
+          ...prev,
+          aracMaliyetler: prev.aracMaliyetler.map((m) =>
+            m.id === id ? { ...m, ...updates } : m
+          ),
+          giderler: prev.giderler.map((g) =>
+            g.id === maliyet.giderId
+              ? {
+                  ...g,
+                  kategori: updates.kategori ?? g.kategori,
+                  tutar: updates.tutar ?? g.tutar,
+                  aciklama: updates.aciklama ?? g.aciklama,
+                }
+              : g
+          ),
+          araclar: updatedAraclar,
+          hesaplar: updatedHesaplar,
+          hesapHareketler: updatedHesapHareketler,
+          krediKartlari: updatedKrediKartlari,
+          krediKartiHareketler: updatedKrediKartiHareketler,
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'OtoGaleri',
+              tip: 'GÜNCELLEME',
+              aciklama: `Araç maliyeti güncellendi: ${updates.kategori || maliyet.kategori}`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.aracMaliyetler, appState.giderler, setAppState]
+  );
+
+  const deleteAracMaliyet = useCallback(
+    (id: string) => {
+      const maliyet = appState.aracMaliyetler.find((m) => m.id === id);
+      if (!maliyet) {
+        throw new Error('Maliyet kaydı bulunamadı');
+      }
+
+      const gider = appState.giderler.find((g) => g.id === maliyet.giderId);
+      if (!gider) {
+        throw new Error('İlişkili gider kaydı bulunamadı');
+      }
+
+      const arac = appState.araclar.find((a) => a.id === maliyet.aracId);
+      if (!arac) {
+        throw new Error('Araç bulunamadı');
+      }
+
+      setAppState((prev) => {
+        let updatedHesaplar = prev.hesaplar;
+        let updatedHesapHareketler = prev.hesapHareketler;
+        let updatedKrediKartlari = prev.krediKartlari;
+        let updatedKrediKartiHareketler = prev.krediKartiHareketler;
+
+        // Hesap/Kredi kartı muhasebe kayıtlarını geri al
+        if (gider.hesapId) {
+          // Hesap bakiyesini geri yükle (para geri gelsin)
+          updatedHesaplar = prev.hesaplar.map((h) =>
+            h.id === gider.hesapId ? { ...h, bakiye: h.bakiye + maliyet.tutar } : h
+          );
+
+          // İlişkili hesap hareketini sil
+          updatedHesapHareketler = prev.hesapHareketler.filter(
+            (hh) => !(hh.kaynakModul === 'OtoGaleri' && hh.kaynakId === id)
+          );
+        } else if (gider.krediKartiId) {
+          // Kredi kartı bakiyesini düşür (borç azalsın)
+          updatedKrediKartlari = prev.krediKartlari.map((kk) =>
+            kk.id === gider.krediKartiId
+              ? { ...kk, bakiye: kk.bakiye - maliyet.tutar }
+              : kk
+          );
+
+          // İlişkili kredi kartı hareketini sil
+          updatedKrediKartiHareketler = prev.krediKartiHareketler.filter(
+            (kkh) => !(kkh.kaynakModul === 'OtoGaleri' && kkh.kaynakId === id)
+          );
+        }
+
+        // Araç toplamMaliyet'ini düşür
+        const updatedAraclar = prev.araclar.map((a) =>
+          a.id === maliyet.aracId
+            ? { ...a, toplamMaliyet: a.toplamMaliyet - maliyet.tutar }
+            : a
+        );
+
+        return {
+          ...prev,
+          aracMaliyetler: prev.aracMaliyetler.filter((m) => m.id !== id),
+          giderler: prev.giderler.filter((g) => g.id !== maliyet.giderId),
+          araclar: updatedAraclar,
+          hesaplar: updatedHesaplar,
+          hesapHareketler: updatedHesapHareketler,
+          krediKartlari: updatedKrediKartlari,
+          krediKartiHareketler: updatedKrediKartiHareketler,
+          islemKayitlari: [
+            ...prev.islemKayitlari,
+            {
+              id: generateId(),
+              tarih: new Date().toISOString(),
+              modul: 'OtoGaleri',
+              tip: 'SİLME',
+              aciklama: `Araç maliyeti silindi: ${maliyet.kategori} (${arac.plaka})`,
+            },
+          ],
+        };
+      });
+    },
+    [appState.aracMaliyetler, appState.giderler, appState.araclar, setAppState]
+  );
+
   const sellArac = useCallback(
     (sellData: {
       aracId: string;
@@ -2721,6 +2898,8 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     addAracPesin,
     addAracTaksitli,
     addAracMaliyet,
+    updateAracMaliyet,
+    deleteAracMaliyet,
     updateArac,
     deleteArac,
     sellArac,

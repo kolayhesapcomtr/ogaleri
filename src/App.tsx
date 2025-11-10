@@ -72,7 +72,7 @@ function App() {
           />
           <Route
             path="/oto-galeri/:id"
-            element={<AracDetailPage appState={appState} />}
+            element={<AracDetailPage appState={appState} setAppState={setAppState} />}
           />
           <Route
             path="/stok"
