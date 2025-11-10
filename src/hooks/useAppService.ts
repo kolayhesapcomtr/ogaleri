@@ -880,6 +880,67 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     [setAppState]
   );
 
+  const updateArac = useCallback(
+    (
+      id: string,
+      updates: Partial<
+        Pick<Arac, 'plaka' | 'marka' | 'model' | 'yil' | 'renk' | 'satirCekNo' | 'alisAciklama'>
+      >
+    ) => {
+      setAppState((prev) => ({
+        ...prev,
+        araclar: prev.araclar.map((a) => (a.id === id ? { ...a, ...updates } : a)),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'OtoGaleri',
+            tip: 'GÜNCELLEME',
+            aciklama: `Araç bilgileri güncellendi: ${updates.plaka || ''}`,
+          },
+        ],
+      }));
+    },
+    [setAppState]
+  );
+
+  const deleteArac = useCallback(
+    (id: string) => {
+      const arac = appState.araclar.find((a) => a.id === id);
+      if (!arac) {
+        throw new Error('Araç bulunamadı');
+      }
+
+      // Satılmış araçlar silinemez
+      if (arac.durum === 'Satıldı') {
+        throw new Error('Satılmış araçlar silinemez');
+      }
+
+      // İlişkili maliyetleri kontrol et
+      const maliyetler = appState.aracMaliyetler.filter((m) => m.aracId === id);
+      if (maliyetler.length > 0) {
+        throw new Error('Önce araç maliyetlerini silmelisiniz');
+      }
+
+      setAppState((prev) => ({
+        ...prev,
+        araclar: prev.araclar.filter((a) => a.id !== id),
+        islemKayitlari: [
+          ...prev.islemKayitlari,
+          {
+            id: generateId(),
+            tarih: new Date().toISOString(),
+            modul: 'OtoGaleri',
+            tip: 'SİLME',
+            aciklama: `Araç silindi: ${arac.plaka}`,
+          },
+        ],
+      }));
+    },
+    [appState.araclar, appState.aracMaliyetler, setAppState]
+  );
+
   const sellArac = useCallback(
     (sellData: {
       aracId: string;
@@ -2660,6 +2721,8 @@ export const useAppService = ({ appState, setAppState }: UseAppServiceProps) => 
     addAracPesin,
     addAracTaksitli,
     addAracMaliyet,
+    updateArac,
+    deleteArac,
     sellArac,
     sellAracTaksitli,
 

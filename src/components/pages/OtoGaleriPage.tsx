@@ -14,11 +14,11 @@ interface OtoGaleriPageProps {
   setAppState: React.Dispatch<React.SetStateAction<AppState>>;
 }
 
-type ModalType = 'none' | 'pesin' | 'taksitli' | 'maliyet' | 'satis' | 'satisTaksitli';
+type ModalType = 'none' | 'pesin' | 'taksitli' | 'maliyet' | 'satis' | 'satisTaksitli' | 'duzenle';
 
 export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => {
   const navigate = useNavigate();
-  const { addAracPesin, addAracTaksitli, addAracMaliyet, sellArac, sellAracTaksitli } = useAppService({
+  const { addAracPesin, addAracTaksitli, addAracMaliyet, updateArac, deleteArac, sellArac, sellAracTaksitli } = useAppService({
     appState,
     setAppState,
   });
@@ -90,10 +90,33 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
     aciklama: '',
   });
 
+  // Düzenleme Form
+  const [duzenleForm, setDuzenleForm] = useState({
+    plaka: '',
+    marka: '',
+    model: '',
+    yil: new Date().getFullYear(),
+    renk: '',
+    satirCekNo: '',
+    alisAciklama: '',
+  });
+
   const handleOpenModal = (type: ModalType, arac?: Arac) => {
     setModalType(type);
     if (arac) {
       setSelectedArac(arac);
+      // Düzenleme modalı için formu doldur
+      if (type === 'duzenle') {
+        setDuzenleForm({
+          plaka: arac.plaka,
+          marka: arac.marka,
+          model: arac.model,
+          yil: arac.yil,
+          renk: arac.renk || '',
+          satirCekNo: arac.satirCekNo || '',
+          alisAciklama: arac.alisAciklama || '',
+        });
+      }
     }
   };
 
@@ -193,6 +216,24 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
         ...satisTaksitliForm,
       });
       handleCloseModal();
+    }
+  };
+
+  const handleDuzenleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedArac) {
+      updateArac(selectedArac.id, duzenleForm);
+      handleCloseModal();
+    }
+  };
+
+  const handleDeleteArac = (id: string) => {
+    if (window.confirm('Bu aracı silmek istediğinizden emin misiniz?')) {
+      try {
+        deleteArac(id);
+      } catch (error) {
+        alert((error as Error).message);
+      }
     }
   };
 
@@ -320,31 +361,56 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {arac.durum === 'Stokta' && (
-                        <div className="flex gap-2 justify-end">
+                      <div className="flex gap-2 justify-end">
+                        {arac.durum === 'Stokta' && (
+                          <>
+                            <button
+                              onClick={() => handleOpenModal('maliyet', arac)}
+                              className="text-primary hover:text-primary-dark"
+                              title="Maliyet Ekle"
+                            >
+                              <Icons.Add />
+                            </button>
+                            <button
+                              onClick={() => handleOpenModal('satis', arac)}
+                              className="text-green-600 hover:text-green-700"
+                              title="Peşin Satış"
+                            >
+                              💰
+                            </button>
+                            <button
+                              onClick={() => handleOpenModal('satisTaksitli', arac)}
+                              className="text-blue-600 hover:text-blue-700"
+                              title="Taksitli Satış"
+                            >
+                              📅
+                            </button>
+                            <button
+                              onClick={() => handleOpenModal('duzenle', arac)}
+                              className="text-gray-600 hover:text-gray-700"
+                              title="Düzenle"
+                            >
+                              <Icons.Edit />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteArac(arac.id)}
+                              className="text-red-600 hover:text-red-700"
+                              title="Sil"
+                            >
+                              <Icons.Delete />
+                            </button>
+                          </>
+                        )}
+                        {arac.durum === 'Satıldı' && (
                           <button
-                            onClick={() => handleOpenModal('maliyet', arac)}
-                            className="text-primary hover:text-primary-dark"
-                            title="Maliyet Ekle"
+                            onClick={() => handleOpenModal('duzenle', arac)}
+                            className="text-gray-600 hover:text-gray-700"
+                            title="Düzenle"
                           >
-                            <Icons.Add />
+                            <Icons.Edit />
                           </button>
-                          <button
-                            onClick={() => handleOpenModal('satis', arac)}
-                            className="text-green-600 hover:text-green-700"
-                            title="Peşin Satış"
-                          >
-                            💰
-                          </button>
-                          <button
-                            onClick={() => handleOpenModal('satisTaksitli', arac)}
-                            className="text-blue-600 hover:text-blue-700"
-                            title="Taksitli Satış"
-                          >
-                            📅
-                          </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1283,6 +1349,91 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
           <div className="flex gap-3 pt-4">
             <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
               Taksitli Satışı Tamamla
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleCloseModal}
+              className="flex-1"
+            >
+              İptal
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Araç Düzenleme Modal */}
+      <Modal
+        isOpen={modalType === 'duzenle'}
+        onClose={handleCloseModal}
+        title={`Araç Düzenle - ${selectedArac?.plaka || ''}`}
+      >
+        <form onSubmit={handleDuzenleSubmit} className="space-y-4">
+          <Input
+            label="Plaka *"
+            value={duzenleForm.plaka}
+            onChange={(e) => setDuzenleForm({ ...duzenleForm, plaka: e.target.value })}
+            placeholder="34 ABC 123"
+            required
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Marka *"
+              value={duzenleForm.marka}
+              onChange={(e) => setDuzenleForm({ ...duzenleForm, marka: e.target.value })}
+              required
+            />
+
+            <Input
+              label="Model *"
+              value={duzenleForm.model}
+              onChange={(e) => setDuzenleForm({ ...duzenleForm, model: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Yıl *"
+              type="number"
+              value={duzenleForm.yil}
+              onChange={(e) =>
+                setDuzenleForm({ ...duzenleForm, yil: parseInt(e.target.value) })
+              }
+              required
+            />
+
+            <Input
+              label="Renk"
+              value={duzenleForm.renk}
+              onChange={(e) => setDuzenleForm({ ...duzenleForm, renk: e.target.value })}
+            />
+          </div>
+
+          <Input
+            label="Şatır Çek No"
+            value={duzenleForm.satirCekNo}
+            onChange={(e) => setDuzenleForm({ ...duzenleForm, satirCekNo: e.target.value })}
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Açıklama
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              rows={3}
+              value={duzenleForm.alisAciklama}
+              onChange={(e) =>
+                setDuzenleForm({ ...duzenleForm, alisAciklama: e.target.value })
+              }
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1">
+              Güncelle
             </Button>
             <Button
               type="button"
