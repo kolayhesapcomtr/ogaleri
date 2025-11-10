@@ -169,21 +169,18 @@ export const CariDetailPage = ({ appState, setAppState }: CariDetailPageProps) =
                 </p>
               </div>
               <div className="flex gap-2">
-                {cari.tip === 'Müşteri' ? (
-                  <Button
-                    onClick={() => handleOpenModal('tahsilat')}
-                    className="bg-green-600 hover:bg-green-700 text-white text-sm"
-                  >
-                    💰 Tahsilat
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => handleOpenModal('odeme')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                  >
-                    💸 Ödeme
-                  </Button>
-                )}
+                <Button
+                  onClick={() => handleOpenModal('tahsilat')}
+                  className="bg-green-600 hover:bg-green-700 text-white text-sm"
+                >
+                  💰 Tahsilat
+                </Button>
+                <Button
+                  onClick={() => handleOpenModal('odeme')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                >
+                  💸 Ödeme
+                </Button>
               </div>
             </div>
           </div>

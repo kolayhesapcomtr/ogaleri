@@ -184,8 +184,8 @@ export const CekSenetPage = ({ appState, setAppState }: CekSenetPageProps) => {
     return cari?.tip === 'Tedarikçi';
   });
 
-  const musteriList = appState.cariler.filter((c) => c.tip === 'Müşteri');
-  const tedarikciList = appState.cariler.filter((c) => c.tip === 'Tedarikçi');
+  // Artık tüm cariler hem müşteri hem tedarikçi olabilir - tip filtresi kaldırıldı
+  const cariList = appState.cariler;
   const hesapList = appState.hesaplar;
 
   const renderCekSenetTable = (cekSenetler: CekSenet[], yon: 'Alinan' | 'Verilen') => {
@@ -473,14 +473,14 @@ export const CekSenetPage = ({ appState, setAppState }: CekSenetPageProps) => {
           />
 
           <Select
-            label={`${form.yon === 'Alinan' ? 'Müşteri' : 'Tedarikçi'} *`}
+            label="Cari *"
             value={form.cariId}
             onChange={(e) => setForm({ ...form, cariId: e.target.value })}
             options={[
-              { value: '', label: 'Seçiniz...' },
-              ...(form.yon === 'Alinan' ? musteriList : tedarikciList).map((c) => ({
+              { value: '', label: 'Cari Seçiniz...' },
+              ...cariList.map((c) => ({
                 value: c.id,
-                label: c.ad,
+                label: `${c.ad} (${c.tip})`,
               })),
             ]}
             required
@@ -694,10 +694,10 @@ export const CekSenetPage = ({ appState, setAppState }: CekSenetPageProps) => {
             value={ciroForm.cariId}
             onChange={(e) => setCiroForm({ ...ciroForm, cariId: e.target.value })}
             options={[
-              { value: '', label: 'Seçiniz...' },
-              ...tedarikciList.map((c) => ({
+              { value: '', label: 'Cari Seçiniz...' },
+              ...cariList.map((c) => ({
                 value: c.id,
-                label: c.ad,
+                label: `${c.ad} (${c.tip})`,
               })),
             ]}
             required

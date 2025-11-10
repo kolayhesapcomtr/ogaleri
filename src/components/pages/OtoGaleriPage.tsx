@@ -176,8 +176,8 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
     return arac.satisFiyati - arac.toplamMaliyet;
   };
 
-  const tedarikciList = appState.cariler.filter((c) => c.tip === 'Tedarikçi');
-  const musteriList = appState.cariler.filter((c) => c.tip === 'Müşteri');
+  // Artık tüm cariler hem müşteri hem tedarikçi olabilir - tip filtresi kaldırıldı
+  const cariList = appState.cariler;
   const hesapList = appState.hesaplar;
   const krediKartiList = appState.krediKartlari;
 
@@ -506,7 +506,10 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
             }
             options={[
               { value: '', label: 'Seçiniz...' },
-              ...tedarikciList.map((t) => ({ value: t.id, label: t.ad })),
+              ...cariList.map((c) => ({
+                value: c.id,
+                label: `${c.ad} (${c.tip})`
+              })),
             ]}
             required
           />
@@ -655,7 +658,10 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
             }
             options={[
               { value: '', label: 'Seçiniz...' },
-              ...tedarikciList.map((t) => ({ value: t.id, label: t.ad })),
+              ...cariList.map((c) => ({
+                value: c.id,
+                label: `${c.ad} (${c.tip})`
+              })),
             ]}
             required
           />
@@ -996,10 +1002,10 @@ export const OtoGaleriPage = ({ appState, setAppState }: OtoGaleriPageProps) => 
               setSatisForm({ ...satisForm, musteriCariId: e.target.value })
             }
             options={[
-              { value: '', label: 'Müşteri Seçiniz...' },
-              ...musteriList.map((m) => ({
-                value: m.id,
-                label: m.ad,
+              { value: '', label: 'Cari Seçiniz...' },
+              ...cariList.map((c) => ({
+                value: c.id,
+                label: `${c.ad} (${c.tip})`,
               })),
             ]}
             required

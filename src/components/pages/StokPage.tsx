@@ -183,8 +183,8 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
     return 'text-green-600 font-semibold';
   };
 
-  const tedarikciList = appState.cariler.filter((c) => c.tip === 'Tedarikçi');
-  const musteriList = appState.cariler.filter((c) => c.tip === 'Müşteri');
+  // Artık tüm cariler hem müşteri hem tedarikçi olabilir - tip filtresi kaldırıldı
+  const cariList = appState.cariler;
   const hesapList = appState.hesaplar;
   const krediKartiList = appState.krediKartlari;
 
@@ -594,8 +594,11 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
               setGirisForm({ ...girisForm, cariId: e.target.value })
             }
             options={[
-              { value: '', label: 'Seçiniz...' },
-              ...tedarikciList.map((t) => ({ value: t.id, label: t.ad })),
+              { value: '', label: 'Cari Seçiniz...' },
+              ...cariList.map((c) => ({
+                value: c.id,
+                label: `${c.ad} (${c.tip})`
+              })),
             ]}
           />
 
@@ -757,8 +760,11 @@ export const StokPage = ({ appState, setAppState }: StokPageProps) => {
               setCikisForm({ ...cikisForm, cariId: e.target.value })
             }
             options={[
-              { value: '', label: 'Seçiniz...' },
-              ...musteriList.map((m) => ({ value: m.id, label: m.ad })),
+              { value: '', label: 'Cari Seçiniz...' },
+              ...cariList.map((c) => ({
+                value: c.id,
+                label: `${c.ad} (${c.tip})`
+              })),
             ]}
           />
 
