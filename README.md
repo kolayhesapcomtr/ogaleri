@@ -8,7 +8,7 @@ Küçük ve orta ölçekli işletmelerin finansal operasyonlarını takip etmesi
 
 ## Özellikler
 
-- 📊 **Dashboard** - Genel bakış ve istatistikler
+- 📊 **Anasayfa** - Genel bakış ve istatistikler
 - 👥 **Cari Hesaplar** - Müşteri/Tedarikçi borç-alacak takibi
 - 💰 **Kasa & Banka** - Nakit ve banka hesapları yönetimi
 - 💸 **Giderler** - Gider takibi ve kategorileme

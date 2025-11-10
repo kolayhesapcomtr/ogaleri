@@ -8,7 +8,7 @@ interface SidebarProps {
 
 export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const menuItems = [
-    { path: '/', label: 'Dashboard', icon: Icons.Dashboard },
+    { path: '/', label: 'Anasayfa', icon: Icons.Dashboard },
     { path: '/cari', label: 'Cari Hesaplar', icon: Icons.Cari },
     { path: '/kasa', label: 'Kasa & Banka', icon: Icons.Kasa },
     { path: '/gider', label: 'Giderler', icon: Icons.Gider },

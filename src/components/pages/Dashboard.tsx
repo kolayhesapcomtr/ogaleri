@@ -144,7 +144,7 @@ export const Dashboard = ({ appState }: DashboardProps) => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Anasayfa</h1>
         <p className="text-gray-600 text-sm">
           {new Date().toLocaleDateString('tr-TR', {
             weekday: 'long',
