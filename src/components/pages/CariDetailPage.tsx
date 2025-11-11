@@ -72,12 +72,31 @@ export const CariDetailPage = ({ appState, setAppState }: CariDetailPageProps) =
     );
   }
 
-  // Cari hareketlerini getir ve tarihe göre sırala
+  // Cari hareketlerini getir ve tarihe göre sırala (en yeni en üstte)
   const hareketler = appState.cariHareketler
     .filter((h) => h.cariId === id)
     .sort((a, b) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime());
 
-  // Bakiye hesaplama
+  // Bakiye hesaplama için hareketleri kronolojik sırada (en eski en başta) işle
+  const hareketlerKronolojik = [...hareketler].sort(
+    (a, b) => new Date(a.tarih).getTime() - new Date(b.tarih).getTime()
+  );
+
+  // Her hareket için çalışan bakiyeyi hesapla
+  const bakiyeMap = new Map<string, number>();
+  let calisanBakiye = 0;
+
+  hareketlerKronolojik.forEach((hareket) => {
+    // Alacak ve Tahsilat pozitif, Borç ve Ödeme negatif
+    if (hareket.tip === 'Alacak' || hareket.tip === 'Tahsilat') {
+      calisanBakiye += hareket.tutar;
+    } else if (hareket.tip === 'Borç' || hareket.tip === 'Ödeme') {
+      calisanBakiye -= hareket.tutar;
+    }
+    bakiyeMap.set(hareket.id, calisanBakiye);
+  });
+
+  // Bakiye hesaplama (toplam tutarlar)
   const toplamBorc = hareketler
     .filter((h) => h.tip === 'Borç')
     .reduce((sum, h) => sum + h.tutar, 0);
@@ -315,8 +334,19 @@ export const CariDetailPage = ({ appState, setAppState }: CariDetailPageProps) =
                             {formatCurrency(hareket.tutar)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
-                          {/* Bakiye hesaplaması burada yapılabilir */}
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          {(() => {
+                            const bakiye = bakiyeMap.get(hareket.id) || 0;
+                            return (
+                              <span
+                                className={
+                                  bakiye >= 0 ? 'text-green-600' : 'text-red-600'
+                                }
+                              >
+                                {formatCurrency(Math.abs(bakiye))}
+                              </span>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
@@ -327,43 +357,55 @@ export const CariDetailPage = ({ appState, setAppState }: CariDetailPageProps) =
 
             {/* Mobil Kart Görünümü */}
             <div className="md:hidden divide-y divide-gray-200">
-              {hareketler.map((hareket) => (
-                <div key={hareket.id} className="px-6 py-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTipBadge(
-                          hareket.tip
-                        )}`}
-                      >
-                        {hareket.tip}
-                      </span>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {formatDate(hareket.tarih)}
-                      </p>
+              {hareketler.map((hareket) => {
+                const bakiye = bakiyeMap.get(hareket.id) || 0;
+                return (
+                  <div key={hareket.id} className="px-6 py-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTipBadge(
+                            hareket.tip
+                          )}`}
+                        >
+                          {hareket.tip}
+                        </span>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {formatDate(hareket.tarih)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p
+                          className={`text-lg font-bold ${
+                            hareket.tip === 'Borç' || hareket.tip === 'Ödeme'
+                              ? 'text-red-600'
+                              : 'text-green-600'
+                          }`}
+                        >
+                          {hareket.tip === 'Borç' || hareket.tip === 'Ödeme'
+                            ? '-'
+                            : '+'}
+                          {formatCurrency(hareket.tutar)}
+                        </p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            bakiye >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}
+                        >
+                          Bakiye: {formatCurrency(Math.abs(bakiye))}
+                        </p>
+                      </div>
                     </div>
-                    <p
-                      className={`text-lg font-bold ${
-                        hareket.tip === 'Borç' || hareket.tip === 'Ödeme'
-                          ? 'text-red-600'
-                          : 'text-green-600'
-                      }`}
-                    >
-                      {hareket.tip === 'Borç' || hareket.tip === 'Ödeme'
-                        ? '-'
-                        : '+'}
-                      {formatCurrency(hareket.tutar)}
+                    <p className="text-sm text-gray-600 mb-1">
+                      {getKaynakModulAdi(hareket.kaynakModul)}
+                      {hareket.kilitli && <span className="ml-1 text-xs">🔒</span>}
                     </p>
+                    {hareket.aciklama && (
+                      <p className="text-sm text-gray-900">{hareket.aciklama}</p>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-600 mb-1">
-                    {getKaynakModulAdi(hareket.kaynakModul)}
-                    {hareket.kilitli && <span className="ml-1 text-xs">🔒</span>}
-                  </p>
-                  {hareket.aciklama && (
-                    <p className="text-sm text-gray-900">{hareket.aciklama}</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
