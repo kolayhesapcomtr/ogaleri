@@ -18,6 +18,7 @@ import { KrediPage } from './components/pages/KrediPage';
 import { KrediDetailPage } from './components/pages/KrediDetailPage';
 import { CekSenetPage } from './components/pages/CekSenetPage';
 import { CekSenetDetailPage } from './components/pages/CekSenetDetailPage';
+import { RaporlarPage } from './components/pages/RaporlarPage';
 import { IslemKayitlariPage } from './components/pages/IslemKayitlariPage';
 import { AyarlarPage } from './components/pages/AyarlarPage';
 import type { AppState, AppMode } from './types';
@@ -109,6 +110,10 @@ function App() {
           <Route
             path="/cek-senet/:id"
             element={<CekSenetDetailPage appState={appState} />}
+          />
+          <Route
+            path="/raporlar"
+            element={<RaporlarPage appState={appState} />}
           />
           <Route
             path="/islem-kayitlari"
