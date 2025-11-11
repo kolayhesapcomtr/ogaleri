@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { AppState } from '../../types';
+import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Select } from '../common/Select';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -15,6 +16,9 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface RaporlarPageProps {
   appState: AppState;
@@ -258,6 +262,323 @@ export const RaporlarPage = ({ appState }: RaporlarPageProps) => {
       toplamGecikmisBorc: gecikmisBorclar.reduce((sum, t) => sum + t.tutar, 0),
     };
   }, [appState.taksitOdemeleri]);
+
+  // ==================== EXPORT FONKSİYONLARI ====================
+
+  const exportToExcel = () => {
+    let data: any[] = [];
+    let fileName = '';
+
+    switch (raporTipi) {
+      case 'gelir-gider':
+        data = [
+          ['Gelir-Gider Raporu'],
+          ['Tarih Aralığı', `${baslangicTarihi} - ${bitisTarihi}`],
+          [],
+          ['Kategori', 'Tutar'],
+          ['Toplam Gelir', gelirGiderData.toplamGelir],
+          ['Toplam Gider', gelirGiderData.toplamGider],
+          ['Net Kar/Zarar', gelirGiderData.netKar],
+        ];
+        fileName = 'Gelir-Gider-Raporu';
+        break;
+
+      case 'cari-bakiye':
+        data = [
+          ['Cari Bakiye Raporu'],
+          ['Tarih', new Date().toLocaleDateString('tr-TR')],
+          [],
+          ['Cari Adı', 'Tip', 'Tutar'],
+          ...cariBakiyeData.map((c) => [c.ad, c.tip, c.mutlakBakiye]),
+          [],
+          ['Toplam Alacak', '', cariBakiyeOzet.toplamAlacak],
+          ['Toplam Borç', '', cariBakiyeOzet.toplamBorc],
+        ];
+        fileName = 'Cari-Bakiye-Raporu';
+        break;
+
+      case 'arac-satis':
+        data = [
+          ['Araç Satış Raporu'],
+          ['Tarih Aralığı', `${baslangicTarihi} - ${bitisTarihi}`],
+          [],
+          ['Araç', 'Plaka', 'Satış Tarihi', 'Satış Fiyatı', 'Maliyet', 'Kar/Zarar'],
+          ...aracSatisData.satilanAraclar.map((a) => [
+            `${a.marka} ${a.model}`,
+            a.plaka,
+            a.satisTarihi,
+            a.satisFiyati || 0,
+            a.toplamMaliyet,
+            (a.satisFiyati || 0) - a.toplamMaliyet,
+          ]),
+          [],
+          ['Toplam', '', '', aracSatisData.toplamSatis, aracSatisData.toplamMaliyet, aracSatisData.toplamKar],
+        ];
+        fileName = 'Arac-Satis-Raporu';
+        break;
+
+      case 'taksit-takvim':
+        data = [
+          ['Taksit Ödeme Takvimi'],
+          ['Tarih', new Date().toLocaleDateString('tr-TR')],
+          [],
+          ['Tip', 'Taksit No', 'Vade Tarihi', 'Tutar', 'Durum'],
+          ...taksitTakvimData.bekleyenTaksitler.map((t) => [
+            t.tip,
+            t.taksitNo,
+            t.vadeTarihi,
+            t.tutar,
+            new Date(t.vadeTarihi) < new Date() ? 'Gecikmiş' : 'Beklemede',
+          ]),
+        ];
+        fileName = 'Taksit-Takvimi';
+        break;
+
+      case 'gider-kategori':
+        data = [
+          ['Gider Kategori Analizi'],
+          ['Tarih Aralığı', `${baslangicTarihi} - ${bitisTarihi}`],
+          [],
+          ['Kategori', 'Tutar', 'Oran (%)'],
+          ...giderKategoriData.map((k) => {
+            const toplamGider = giderKategoriData.reduce((sum, g) => sum + g.value, 0);
+            const oran = (k.value / toplamGider) * 100;
+            return [k.name, k.value, oran.toFixed(1)];
+          }),
+        ];
+        fileName = 'Gider-Kategori-Analizi';
+        break;
+
+      case 'stok-durum':
+        data = [
+          ['Stok Durum Raporu'],
+          ['Tarih', new Date().toLocaleDateString('tr-TR')],
+          [],
+          ['Ürün Adı', 'Kategori', 'Stok', 'Alış Fiyatı', 'Toplam Değer'],
+          ...stokDurumData.urunler.map((u) => [
+            u.ad,
+            u.kategori,
+            u.stokMiktari,
+            u.alisFiyati,
+            u.stokMiktari * u.alisFiyati,
+          ]),
+          [],
+          ['Toplam', '', stokDurumData.toplamStokMiktari, '', stokDurumData.toplamDeger],
+        ];
+        fileName = 'Stok-Durum-Raporu';
+        break;
+
+      case 'kar-zarar':
+        data = [
+          ['Kar-Zarar Raporu (Araç Bazında)'],
+          ['Tarih Aralığı', `${baslangicTarihi} - ${bitisTarihi}`],
+          [],
+          ['Araç', 'Plaka', 'Maliyet', 'Satış', 'Kar/Zarar', 'Kar Marjı (%)'],
+          ...karZararData.map((a) => [
+            `${a.marka} ${a.model}`,
+            a.plaka,
+            a.toplamMaliyet,
+            a.satisFiyati || 0,
+            a.kar,
+            a.karMarji.toFixed(1),
+          ]),
+        ];
+        fileName = 'Kar-Zarar-Raporu';
+        break;
+
+      case 'vadesi-gecmis':
+        data = [
+          ['Vadesi Geçmiş Alacaklar/Borçlar'],
+          ['Tarih', new Date().toLocaleDateString('tr-TR')],
+          [],
+          ['Gecikmiş Alacaklar'],
+          ['Vade Tarihi', 'Tutar'],
+          ...vadesiGecmisData.gecikmisAlacaklar.map((t) => [t.vadeTarihi, t.tutar]),
+          [],
+          ['Gecikmiş Borçlar'],
+          ['Vade Tarihi', 'Tutar'],
+          ...vadesiGecmisData.gecikmisBorclar.map((t) => [t.vadeTarihi, t.tutar]),
+        ];
+        fileName = 'Vadesi-Gecmis-Raporu';
+        break;
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rapor');
+    XLSX.writeFile(wb, `${fileName}_${new Date().toLocaleDateString('tr-TR')}.xlsx`);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+
+    // Başlık
+    doc.setFontSize(16);
+    let raporBaslik = '';
+
+    switch (raporTipi) {
+      case 'gelir-gider':
+        raporBaslik = 'Gelir-Gider Raporu';
+        doc.text(raporBaslik, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tarih Aralığı: ${baslangicTarihi} - ${bitisTarihi}`, 14, 22);
+
+        autoTable(doc, {
+          startY: 30,
+          head: [['Kategori', 'Tutar']],
+          body: [
+            ['Toplam Gelir', formatCurrency(gelirGiderData.toplamGelir)],
+            ['Toplam Gider', formatCurrency(gelirGiderData.toplamGider)],
+            ['Net Kar/Zarar', formatCurrency(gelirGiderData.netKar)],
+          ],
+        });
+        break;
+
+      case 'cari-bakiye':
+        raporBaslik = 'Cari Bakiye Raporu';
+        doc.text(raporBaslik, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 14, 22);
+
+        autoTable(doc, {
+          startY: 30,
+          head: [['Cari Adı', 'Tip', 'Tutar']],
+          body: cariBakiyeData.map((c) => [
+            c.ad,
+            c.tip,
+            formatCurrency(c.mutlakBakiye),
+          ]),
+        });
+        break;
+
+      case 'arac-satis':
+        raporBaslik = 'Araç Satış Raporu';
+        doc.text(raporBaslik, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tarih Aralığı: ${baslangicTarihi} - ${bitisTarihi}`, 14, 22);
+
+        autoTable(doc, {
+          startY: 30,
+          head: [['Araç', 'Plaka', 'Satış', 'Maliyet', 'Kar/Zarar']],
+          body: aracSatisData.satilanAraclar.map((a) => [
+            `${a.marka} ${a.model}`,
+            a.plaka,
+            formatCurrency(a.satisFiyati || 0),
+            formatCurrency(a.toplamMaliyet),
+            formatCurrency((a.satisFiyati || 0) - a.toplamMaliyet),
+          ]),
+        });
+        break;
+
+      case 'taksit-takvim':
+        raporBaslik = 'Taksit Ödeme Takvimi';
+        doc.text(raporBaslik, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 14, 22);
+
+        autoTable(doc, {
+          startY: 30,
+          head: [['Tip', 'Taksit No', 'Vade Tarihi', 'Tutar', 'Durum']],
+          body: taksitTakvimData.bekleyenTaksitler.map((t) => [
+            t.tip,
+            t.taksitNo,
+            formatDate(t.vadeTarihi),
+            formatCurrency(t.tutar),
+            new Date(t.vadeTarihi) < new Date() ? 'Gecikmiş' : 'Beklemede',
+          ]),
+        });
+        break;
+
+      case 'gider-kategori':
+        raporBaslik = 'Gider Kategori Analizi';
+        doc.text(raporBaslik, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tarih Aralığı: ${baslangicTarihi} - ${bitisTarihi}`, 14, 22);
+
+        autoTable(doc, {
+          startY: 30,
+          head: [['Kategori', 'Tutar', 'Oran (%)']],
+          body: giderKategoriData.map((k) => {
+            const toplamGider = giderKategoriData.reduce((sum, g) => sum + g.value, 0);
+            const oran = (k.value / toplamGider) * 100;
+            return [k.name, formatCurrency(k.value), oran.toFixed(1) + '%'];
+          }),
+        });
+        break;
+
+      case 'stok-durum':
+        raporBaslik = 'Stok Durum Raporu';
+        doc.text(raporBaslik, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 14, 22);
+
+        autoTable(doc, {
+          startY: 30,
+          head: [['Ürün Adı', 'Kategori', 'Stok', 'Alış Fiyatı', 'Toplam Değer']],
+          body: stokDurumData.urunler.map((u) => [
+            u.ad,
+            u.kategori,
+            u.stokMiktari,
+            formatCurrency(u.alisFiyati),
+            formatCurrency(u.stokMiktari * u.alisFiyati),
+          ]),
+        });
+        break;
+
+      case 'kar-zarar':
+        raporBaslik = 'Kar-Zarar Raporu (Araç Bazında)';
+        doc.text(raporBaslik, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tarih Aralığı: ${baslangicTarihi} - ${bitisTarihi}`, 14, 22);
+
+        autoTable(doc, {
+          startY: 30,
+          head: [['Araç', 'Plaka', 'Maliyet', 'Satış', 'Kar/Zarar']],
+          body: karZararData.map((a) => [
+            `${a.marka} ${a.model}`,
+            a.plaka,
+            formatCurrency(a.toplamMaliyet),
+            formatCurrency(a.satisFiyati || 0),
+            formatCurrency(a.kar),
+          ]),
+        });
+        break;
+
+      case 'vadesi-gecmis':
+        raporBaslik = 'Vadesi Geçmiş Alacaklar/Borçlar';
+        doc.text(raporBaslik, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 14, 22);
+
+        // Alacaklar
+        doc.setFontSize(12);
+        doc.text('Gecikmiş Alacaklar', 14, 35);
+        autoTable(doc, {
+          startY: 40,
+          head: [['Vade Tarihi', 'Tutar']],
+          body: vadesiGecmisData.gecikmisAlacaklar.map((t) => [
+            formatDate(t.vadeTarihi),
+            formatCurrency(t.tutar),
+          ]),
+        });
+
+        // Borçlar
+        const finalY = (doc as any).lastAutoTable.finalY || 40;
+        doc.setFontSize(12);
+        doc.text('Gecikmiş Borçlar', 14, finalY + 10);
+        autoTable(doc, {
+          startY: finalY + 15,
+          head: [['Vade Tarihi', 'Tutar']],
+          body: vadesiGecmisData.gecikmisBorclar.map((t) => [
+            formatDate(t.vadeTarihi),
+            formatCurrency(t.tutar),
+          ]),
+        });
+        break;
+    }
+
+    doc.save(`${raporBaslik}_${new Date().toLocaleDateString('tr-TR')}.pdf`);
+  };
 
   const renderRapor = () => {
     switch (raporTipi) {
@@ -980,7 +1301,7 @@ export const RaporlarPage = ({ appState }: RaporlarPageProps) => {
 
       {/* Filtreler */}
       <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <Select
             label="Rapor Tipi"
             value={raporTipi}
@@ -999,6 +1320,30 @@ export const RaporlarPage = ({ appState }: RaporlarPageProps) => {
             value={bitisTarihi}
             onChange={(e) => setBitisTarihi(e.target.value)}
           />
+        </div>
+
+        {/* Export Butonları */}
+        <div className="flex gap-3 pt-4 border-t">
+          <Button
+            onClick={exportToExcel}
+            variant="secondary"
+            className="flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Excel'e Aktar
+          </Button>
+          <Button
+            onClick={exportToPDF}
+            variant="secondary"
+            className="flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            PDF'e Aktar
+          </Button>
         </div>
       </div>
 
