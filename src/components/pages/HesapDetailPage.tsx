@@ -72,10 +72,29 @@ export const HesapDetailPage = ({ appState, setAppState }: HesapDetailPageProps)
     );
   }
 
-  // Hesap hareketlerini getir ve tarihe göre sırala
+  // Hesap hareketlerini getir ve tarihe göre sırala (en yeni en üstte)
   const hareketler = appState.hesapHareketler
     .filter((h) => h.hesapId === id)
     .sort((a, b) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime());
+
+  // Bakiye hesaplama için hareketleri kronolojik sırada (en eski en başta) işle
+  const hareketlerKronolojik = [...hareketler].sort(
+    (a, b) => new Date(a.tarih).getTime() - new Date(b.tarih).getTime()
+  );
+
+  // Her hareket için çalışan bakiyeyi hesapla
+  const bakiyeMap = new Map<string, number>();
+  let calisanBakiye = 0;
+
+  hareketlerKronolojik.forEach((hareket) => {
+    // ParaGirişi ve VirmanGelen pozitif, ParaÇıkışı ve VirmanGiden negatif
+    if (hareket.tip === 'ParaGirişi' || hareket.tip === 'VirmanGelen') {
+      calisanBakiye += hareket.tutar;
+    } else if (hareket.tip === 'ParaÇıkışı' || hareket.tip === 'VirmanGiden') {
+      calisanBakiye -= hareket.tutar;
+    }
+    bakiyeMap.set(hareket.id, calisanBakiye);
+  });
 
   // İstatistikler
   const toplamGiris = hareketler
@@ -284,6 +303,9 @@ export const HesapDetailPage = ({ appState, setAppState }: HesapDetailPageProps)
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tutar
                     </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Bakiye
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -319,6 +341,20 @@ export const HesapDetailPage = ({ appState, setAppState }: HesapDetailPageProps)
                             {formatCurrency(hareket.tutar)}
                           </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          {(() => {
+                            const bakiye = bakiyeMap.get(hareket.id) || 0;
+                            return (
+                              <span
+                                className={
+                                  bakiye >= 0 ? 'text-green-600' : 'text-red-600'
+                                }
+                              >
+                                {formatCurrency(Math.abs(bakiye))}
+                              </span>
+                            );
+                          })()}
+                        </td>
                       </tr>
                     );
                   })}
@@ -330,6 +366,7 @@ export const HesapDetailPage = ({ appState, setAppState }: HesapDetailPageProps)
             <div className="md:hidden divide-y divide-gray-200">
               {hareketler.map((hareket) => {
                 const isGiris = hareket.tip === 'ParaGirişi' || hareket.tip === 'VirmanGelen';
+                const bakiye = bakiyeMap.get(hareket.id) || 0;
                 return (
                   <div key={hareket.id} className="px-6 py-4">
                     <div className="flex justify-between items-start mb-2">
@@ -346,14 +383,23 @@ export const HesapDetailPage = ({ appState, setAppState }: HesapDetailPageProps)
                           {formatDate(hareket.tarih)}
                         </p>
                       </div>
-                      <p
-                        className={`text-lg font-bold ${
-                          isGiris ? 'text-green-600' : 'text-red-600'
-                        }`}
-                      >
-                        {isGiris ? '+' : '-'}
-                        {formatCurrency(hareket.tutar)}
-                      </p>
+                      <div className="text-right">
+                        <p
+                          className={`text-lg font-bold ${
+                            isGiris ? 'text-green-600' : 'text-red-600'
+                          }`}
+                        >
+                          {isGiris ? '+' : '-'}
+                          {formatCurrency(hareket.tutar)}
+                        </p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            bakiye >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}
+                        >
+                          Bakiye: {formatCurrency(Math.abs(bakiye))}
+                        </p>
+                      </div>
                     </div>
                     <p className="text-sm text-gray-600 mb-1">
                       {getKaynakModulAdi(hareket.kaynakModul)}
